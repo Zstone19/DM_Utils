@@ -116,6 +116,49 @@ def make_qsopar(path, ngauss_hb_br=2, fname='qsopar.fits', OIIItype='c'):
 
 def get_spec_dat(rmid, spec_path, p0_path, summary_path, res_path=None, line_path=None):
     
+    """Get the spectral data for a given object in the SDSSRM sample to be used for BRAINS. 
+    
+    Parameters
+    ----------
+    rmid : int
+        The RMID of the object to be fit.
+        
+    spec_path : str
+        The path to the directory containing the SDSSRM spectra.
+        
+    p0_path : str
+        The path to the directory containing the p0 files.
+        
+    summary_path : str
+        The path to the directory containing the summary.fits file.
+        
+    res_path : str, optional
+        The path to the directory containing the results of the PyQSOFit emission line fits. If ``None``, 
+        the files will not be read.
+        
+    line_path : str, optional
+        The path to the directory containing the line files. If ``None``, the files will not be read.
+    
+
+    Returns:
+    --------
+    spec_prop : astropy.table.Table
+        A table of properties for each spectrum for all epochs. This lists the MJD, redshift, epoch, as well as 
+        the filenames for the spectra and (optionally) the fit emission lines
+        
+    table_arr: list
+        A list of astropy.table.Table objects containing the spectral data for each epoch. The columns are
+        wavelength, flux, flux error, corrected flux (using p0), and corrected error.
+        
+    ra: float
+        The RA of the object.
+        
+    dec: float
+        The DEC of the object.
+    
+    
+    """
+    
     spec_files = glob.glob(spec_path + 'RMID_{:03d}/*'.format(rmid) )
     lnp0_dat = Table.read(p0_path + 'rm{:03}/rm{:03}_p0_t.dat'.format(rmid,rmid), format='ascii', names=['mjd', 'lnp0', 'err'] )
 
@@ -199,7 +242,7 @@ def get_spec_dat(rmid, spec_path, p0_path, summary_path, res_path=None, line_pat
 
 
 
-
+# Get the results of the pyQSOFit emission line fits (need to copy them from the original directory)
 def get_fit_res(res_path, line_path, rmid):
     
     epoch_dirs = glob.glob(res_path + 'rm{:03d}/*/'.format(rmid) )
@@ -245,7 +288,7 @@ def get_fit_res(res_path, line_path, rmid):
 ############################################################################################################
 #Get input for BRAINS
 
-
+#Get the bounds of the emission line profile given the (unbinned) spectra
 def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
     left_bound = []
@@ -287,6 +330,51 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
     #Wavelength is assumed to be in rest frame
     #Wavelength bins for each time are assumed not to be the same
     
+    """Generate the input 2d line profile file for BRAINS. 
+    This takes in a list of filenames for the 1d line profiles for each epoch of observation, 
+    the central (rest-frame) wavelength for the line, the times of observation, 
+    the redshift of the object, and the ouput filename. 
+    NOTE: The wavelengths listed in the profile files should be in the rest-frame. 
+    NOTE: The wavelengths in the output file will be in the observed-frame.
+    
+    The wavelengths bins for each epoch are not assumed to be the same. This will bin the spectra so they
+    are all on the same wavelength grid. The general process is:
+    - Create the wavelength grid
+    - Bin the spectra onto this grid
+    - If there are no points within a given bin, linearly interpolate the surrounding 5 datapoints
+    - If the edge bins have no points within them, truncate the spectra to the first/last bin with points
+    
+    
+    Parameters
+    ----------
+    fnames : list of strings
+        List of filenames for the 1d line profiles for each epoch of observation
+        
+    central_wl : float
+        Central wavelength of the line in the rest-frame
+        
+    times : list of floats
+        List of times of observation
+        
+    z : float
+        Redshift of the object
+        
+    output_fname : string
+        Filename for the output file
+        
+    nbin : int, optional
+        Number of wavelength bins to use. If not specified, will use the number of bins in the longest (i.e., most resolved) spectrum
+    
+    tol : float, optional
+        Tolerance for determining the bounds of the line profile. If the profile dips below this value, it is considered to be outside the line profile.
+
+
+    Returns
+    -------
+    None
+    
+    """
+    
     wl_tot = []
     prof_tot = []
     err_tot = []
@@ -308,10 +396,6 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
         wl_tot.append(wl_rest)
         prof_tot.append(prof)
         err_tot.append(prof_err)
-
-    #wl_tot = np.vstack(wl_tot)
-    #prof_tot = np.vstack(prof_tot)
-    #err_tot = np.vstack(err_tot)
 
 
     #Go to observer frame
