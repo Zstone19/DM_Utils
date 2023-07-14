@@ -70,6 +70,44 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
         save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
         save_fits_name=None, save_fits_path=None, verbose=False)
 
+
+    c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
+    chi2_nu1 = float(qi.comp_result[c*7+4])
+    
+    names = qi.line_result_name
+    oiii_mask = (names == 'OIII4959c_1_scale')
+    oiii_scale = float(qi.line_result[oiii_mask])
+
+
+    n = 0
+    while (chi2_nu1 > 3) or (oiii_scale < 1):
+        
+        qi = QSOFit(lam, flux, err, z, ra=ra, dec=dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)
+        
+        qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                and_mask=True, or_mask=True,
+            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+            decompose_host=False, npca_gal=5, npca_qso=20, 
+            Fe_uv_op=True, poly=True,
+            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+            save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+            save_fits_name=None, save_fits_path=None, verbose=False)
+
+
+        c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
+        chi2_nu1 = float(qi.comp_result[c*7+4])
+        
+        names = qi.line_result_name
+        oiii_mask = (names == 'OIII4959c_1_scale')
+        oiii_scale = float(qi.line_result[oiii_mask])
+
+        if n > 5:
+            break
+
+        n += 1
+
     return qi
 
 
