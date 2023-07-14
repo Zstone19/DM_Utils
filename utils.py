@@ -2,6 +2,8 @@ from astropy.table import Table
 from astropy.io import fits
 import numpy as np
 
+from scipy.interpolate import splev, splrep, interp1d
+
 import os
 import glob
 import gzip
@@ -341,9 +343,8 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
     are all on the same wavelength grid. The general process is:
     - Create the wavelength grid
     - Bin the spectra onto this grid
-    - If there are no points within a given bin, linearly interpolate the surrounding 5 datapoints
     - If the edge bins have no points within them, truncate the spectra to the first/last bin with points
-    
+    - Fit a spline to fill the bins with no points
     
     Parameters
     ----------
@@ -470,6 +471,29 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
             err_tot_rebin[n,j] = err_prof
             
             
+
+    #Interpolate over NaNs
+    for n in range(len(wl_tot)):
+        nan_mask = np.isnan(prof_tot_rebin[n])
+        
+        if len(np.argwhere(nan_mask).T[0]) == 0:
+            continue
+        
+        xgood = wl_tot_rebin[n][~nan_mask]
+        ygood = prof_tot_rebin[n][~nan_mask]
+        
+        xtot = wl_tot_rebin[n]
+        
+        
+        #This is with B-Splines
+        spl = splrep(xgood, ygood, s=0)
+        prof_tot_rebin[n] = splev(xtot, spl)        
+        
+        # #This is with interp1d
+        # func = interp1d(xgood, ygood, kind='cubic')
+        
+
+    
     
     #See if there are NaNs on the edges
     nan_ind = np.argwhere( np.isnan(prof_tot_rebin) )
@@ -543,42 +567,67 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
 
 
 
-    #Linearly interpolate between points for wl bins with no data
-    for i in range(len(wl_tot_rebin)):
-        nan_ind = np.argwhere( np.isnan(prof_tot_rebin[i,:]) )
+    #Deal with NaNs in the error
+    for i in range(len(err_tot_rebin)):
+        nan_ind = np.argwhere( np.isnan(err_tot_rebin[i]) ).T[0]
         
-        if len(nan_ind) == 0:
-            continue
         
-        nfit = 5
-        
-        nan_ind = nan_ind.T[0]
-        n = 0
-        while n < len(nan_ind):
-            n_interp = 1
-            ind_lo = nan_ind[n] - 1
+        j = 0
+        while j < len(nan_ind):
 
-            m = nan_ind[n] + 1
+            left_ind = nan_ind[j] - 1
+            
+            n_interp = 1
+            m = nan_ind[j] + 1
             while m in nan_ind:
                 n_interp += 1
-                m += 1 
+                m += 1
+                
+            right_ind = m
+                        
+            err_tot_rebin[i,left_ind+1:right_ind] = np.sqrt( (err_tot_rebin[i,left_ind] + err_tot_rebin[i,right_ind])**2 /4 + np.var(prof_tot_rebin[i,left_ind+1:right_ind]) )
+            
+            j += n_interp
 
-            ind_hi = m
 
 
-            xfit = wl_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
-            yfit = prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
 
-            nan_mask = np.isnan(yfit)
-            xfit = xfit[~nan_mask]
-            yfit = yfit[~nan_mask]
+    # #Linearly interpolate between points for wl bins with no data
+    # for i in range(len(wl_tot_rebin)):
+    #     nan_ind = np.argwhere( np.isnan(prof_tot_rebin[i,:]) )
+        
+    #     if len(nan_ind) == 0:
+    #         continue
+        
+    #     nfit = 5
+        
+    #     nan_ind = nan_ind.T[0]
+    #     n = 0
+    #     while n < len(nan_ind):
+    #         n_interp = 1
+    #         ind_lo = nan_ind[n] - 1
 
-            p = np.polyfit( xfit, yfit, 1)
-            for j in range(1, n_interp+1):
-                prof_tot_rebin[i, ind_lo+j] = np.polyval(p, wl_tot_rebin[i, ind_lo+j])
-                err_tot_rebin[i, ind_lo+j] = np.sqrt( np.nanvar(prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]) + np.nansum( err_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]**2 ) )
+    #         m = nan_ind[n] + 1
+    #         while m in nan_ind:
+    #             n_interp += 1
+    #             m += 1 
 
-            n += n_interp
+    #         ind_hi = m
+
+
+    #         xfit = wl_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
+    #         yfit = prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
+
+    #         nan_mask = np.isnan(yfit)
+    #         xfit = xfit[~nan_mask]
+    #         yfit = yfit[~nan_mask]
+
+    #         p = np.polyfit( xfit, yfit, 1)
+    #         for j in range(1, n_interp+1):
+    #             prof_tot_rebin[i, ind_lo+j] = np.polyval(p, wl_tot_rebin[i, ind_lo+j])
+    #             err_tot_rebin[i, ind_lo+j] = np.sqrt( np.nanvar(prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]) + np.nansum( err_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]**2 ) )
+
+    #         n += n_interp
 
 
     #Make sure there are no NaNs left
