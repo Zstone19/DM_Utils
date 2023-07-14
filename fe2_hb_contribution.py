@@ -2,11 +2,11 @@ import numpy as np
 import multiprocessing as mp
 
 from astropy.table import Table
-from astropy.io import fits
 
-from scipy.interpolate import interp1d
+from scipy.interpolate import splrep, splev
 
 from pyqsofit.PyQSOFit import QSOFit
+from host_contribution import remove_host_flux
 
 import os
 import utils
@@ -14,13 +14,14 @@ import sys
 
 
 
+####################################################################################
+########################### GET FeII-Hb FLUX FOR ALL EPOCHS ########################
+####################################################################################
 
-####################################################################################
-######################### GET HOST FLUX FOR ALL EPOCHS #############################
-####################################################################################
 
 if __name__ == '__main__':
     rmid = int(sys.argv[1])
+
 
     dat_dir = '/data3/stone28/2drm/sdssrm/spec/'
     p0_dir = '/data2/yshen/sdssrm/public/prepspec/'
@@ -30,12 +31,12 @@ if __name__ == '__main__':
 
     output_dir_res = '/data3/stone28/2drm/sdssrm/fit_res_mg2/'
     res_dir = output_dir_res + 'rm{:03d}/'.format(rmid)
-
-
-
+    
+    
+    
 def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit):
 
-    print('Fitting host contribution for epoch {:03d}'.format(ind+1))
+    print('Fitting FeII-Hbeta contribution for epoch {:03d}'.format(ind+1))
     
     lam = np.array(table_arr[ind]['Wave[vaccum]'])
     flux = np.array(table_arr[ind]['corrected_flux'])
@@ -51,24 +52,32 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
     plateid = spec_prop['plateid'][ind]
     fiberid = spec_prop['fiberid'][ind]
 
-    
+    wave_range = np.array([4500, 5500])
+    flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
+                                                         '/data3/stone28/2drm/sdssrm/constants/host_fluxes/rm{:03d}/best_host_flux.dat'.format(rmid), 
+                                                         z=z)
+
     qi = QSOFit(lam, flux, err, z, ra=ra, dec=dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                 and_mask_in=and_mask, or_mask_in=or_mask)
     
     qi.Fit(name='Object', nsmooth=1, deredden=True, 
             and_mask=True, or_mask=True,
-        reject_badpix=False, wave_range=None, wave_mask=None, 
-        decompose_host=True, npca_gal=5, npca_qso=20, 
+        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+        decompose_host=False, npca_gal=5, npca_qso=20, 
         Fe_uv_op=True, poly=True,
         rej_abs_conti=False, rej_abs_line=rej_abs_line,
         MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
         save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
         save_fits_name=None, save_fits_path=None, verbose=False)
 
-    return qi.wave, qi.host
-    
+    return qi
 
-def get_host_flux(njob, qsopar_dir, nburn, nsamp, nthin,
+
+
+
+
+
+def get_feii_flux(njob, qsopar_dir, nburn, nsamp, nthin,
                  ra, dec,
                  rej_abs_line=False, linefit=False, ncpu=None):
 
@@ -93,75 +102,74 @@ def get_host_flux(njob, qsopar_dir, nburn, nsamp, nthin,
         ncpu = njob
 
     pool = mp.Pool(ncpu)
-    res = pool.starmap( host_job, argtot )
+    qi_arr = pool.starmap( host_job, argtot )
     pool.close()
     pool.join()    
     
     
-    host_fluxes = []
     wl_arrs = []
+    feii_arrs = []
+    for i in range(njob):
+        wl_arrs.append(qi_arr[i].wave)
+        feii_arrs.append( qi_arr[i].f_fe_mgii_model + qi_arr[i].f_fe_balmer_model )
     
-    for i in range(len(res)):
-        wl_arrs.append(res[i][0])
-        host_fluxes.append(res[i][1])
     
-    return wl_arrs, host_fluxes
+    return wl_arrs, feii_arrs
 
 
-def save_host_fluxes(wl_arrs, host_fluxes, output_dir):
+
+
+
+def save_feii_fluxes(wl_arrs, host_fluxes, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
     
     output_fnames = []
     for i in range(len(wl_arrs)):
-        output_fnames.append( output_dir + 'host_flux_epoch{:03d}.dat'.format(i+1) )
+        output_fnames.append( output_dir + 'FeII_fit_epoch{:03d}.dat'.format(i+1) )
     
     
     for i in range(len(wl_arrs)):        
-        dat = Table( [wl_arrs[i], host_fluxes[i]], names=['RestWavelength', 'HostFlux'] )
+        dat = Table( [wl_arrs[i], host_fluxes[i]], names=['RestWavelength', 'FeII_Hbeta'] )
         dat.write(output_fnames[i], format='ascii', overwrite=True)
     
     return
 
 
 
+
+
 ####################################################################################
-########################### SUBTRACT SAVED HOST FLUX ###############################
+###################### SUBTRACT SAVED FeII Hbeta FLUX ##############################
 ####################################################################################
 
-def interpolate_host_flux(rest_wl, host_flux_fname, kind='linear'):
+def interpolate_fe2_flux(rest_wl, host_flux_fname, kind='linear'):
     dat = Table.read(host_flux_fname, format='ascii')
-    host_wl = np.array(dat['RestWavelength'])
-    host_flux = np.array(dat['HostFlux'])
+    ref_wl = np.array(dat['RestWavelength'])
+    ref_flux = np.array(dat['FeII_Hbeta'])
     
+    spl = splrep(ref_wl, ref_flux, s=0)
+    interp_host_flux = splev(rest_wl, spl, der=0)
     
-    min_wl = np.min(host_wl)
-    max_wl = np.max(host_wl)
-    mask = (rest_wl >= min_wl) & (rest_wl <= max_wl)
-    
-    func = interp1d(host_wl, host_flux, kind=kind)
-    interp_host_flux = func(rest_wl[mask])
-    
-    return interp_host_flux, mask
+    return interp_host_flux
 
 
-def remove_host_flux(wl, flux, err, and_mask, or_mask, host_flux_fname, z=None):
+def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, z=None):
     if z is None:
         z = 0.0
     
     rest_wl = wl / (1+z)
-    interp_host_flux, mask = interpolate_host_flux(rest_wl, host_flux_fname)
+    interp_host_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname)
     
-    return flux[mask] - interp_host_flux, wl[mask], err[mask], and_mask[mask], or_mask[mask]
+    return flux - interp_host_flux
 
-    
+
 ####################################################################################
 ####################################### RUN ########################################
 ####################################################################################
 
 if __name__ == '__main__':
-    #Get host flux
-    wl_arrs, host_fluxes = get_host_flux( len(spec_prop), res_dir,
+    wl_arrs, feii_fluxes = get_feii_flux( len(spec_prop), res_dir,
                                     100, 200, 10,
-                                    ra, dec)
-    save_host_fluxes(wl_arrs, host_fluxes, '/data3/stone28/2drm/sdssrm/host_fluxes/rm{:03d}/'.format(rmid))
+                                    ra, dec, linefit=True)
+    save_feii_fluxes(wl_arrs, feii_fluxes, '/data3/stone28/2drm/sdssrm/constants/fe2_hb/rm{:03d}/'.format(rmid))
