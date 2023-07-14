@@ -29,12 +29,12 @@ if __name__ == '__main__':
     spec_prop, table_arr, ra, dec = utils.get_spec_dat(rmid, dat_dir, p0_dir, summary_dir)
 
 
-    output_dir_res = '/data3/stone28/2drm/sdssrm/fit_res_ha/'
+    output_dir_res = '/data3/stone28/2drm/sdssrm/fit_res_mg2/'
     res_dir = output_dir_res + 'rm{:03d}/'.format(rmid)
     
     
     
-def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit):
+def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit, masks):
 
     print('Fitting FeII-Halpha contribution for epoch {:03d}'.format(ind+1))
     
@@ -52,7 +52,7 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
     plateid = spec_prop['plateid'][ind]
     fiberid = spec_prop['fiberid'][ind]
 
-    wave_range = np.array([4500, 5500])
+    wave_range = np.array([6000, 7000])
     flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
                                                          '/data3/stone28/2drm/sdssrm/constants/host_fluxes/rm{:03d}/best_host_flux.dat'.format(rmid), 
                                                          z=z)
@@ -61,7 +61,7 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
                 and_mask_in=and_mask, or_mask_in=or_mask)
     
     qi.Fit(name='Object', nsmooth=1, deredden=True, 
-            and_mask=True, or_mask=True,
+            and_mask=False, or_mask=False,
         reject_badpix=False, wave_range=wave_range, wave_mask=None, 
         decompose_host=False, npca_gal=5, npca_qso=20, 
         Fe_uv_op=True, poly=True,
@@ -81,7 +81,7 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
                     and_mask_in=and_mask, or_mask_in=or_mask)
         
         qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                and_mask=True, or_mask=True,
+                and_mask=False, or_mask=False,
             reject_badpix=False, wave_range=wave_range, wave_mask=None, 
             decompose_host=False, npca_gal=5, npca_qso=20, 
             Fe_uv_op=True, poly=True,
