@@ -29,14 +29,14 @@ if __name__ == '__main__':
     spec_prop, table_arr, ra, dec = utils.get_spec_dat(rmid, dat_dir, p0_dir, summary_dir)
 
 
-    output_dir_res = '/data3/stone28/2drm/sdssrm/fit_res_hb/'
+    output_dir_res = '/data3/stone28/2drm/sdssrm/fit_res_ha/'
     res_dir = output_dir_res + 'rm{:03d}/'.format(rmid)
     
     
     
 def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit):
 
-    print('Fitting FeII-Hbeta contribution for epoch {:03d}'.format(ind+1))
+    print('Fitting FeII-Halpha contribution for epoch {:03d}'.format(ind+1))
     
     lam = np.array(table_arr[ind]['Wave[vaccum]'])
     flux = np.array(table_arr[ind]['corrected_flux'])
@@ -71,16 +71,11 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
         save_fits_name=None, save_fits_path=None, verbose=False)
 
 
-    c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
+    c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\alpha$' ).T[0][0]
     chi2_nu1 = float(qi.comp_result[c*7+4])
-    
-    names = qi.line_result_name
-    oiii_mask = (names == 'OIII4959c_1_scale')
-    oiii_scale = float(qi.line_result[oiii_mask])
-
 
     n = 0
-    while (chi2_nu1 > 3) or (oiii_scale < 1):
+    while chi2_nu1 > 3:
         
         qi = QSOFit(lam, flux, err, z, ra=ra, dec=dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)
@@ -96,12 +91,8 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
             save_fits_name=None, save_fits_path=None, verbose=False)
 
 
-        c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
+        c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\alpha$' ).T[0][0]
         chi2_nu1 = float(qi.comp_result[c*7+4])
-        
-        names = qi.line_result_name
-        oiii_mask = (names == 'OIII4959c_1_scale')
-        oiii_scale = float(qi.line_result[oiii_mask])
 
         if n > 5:
             break
@@ -168,7 +159,7 @@ def save_feii_fluxes(wl_arrs, host_fluxes, output_dir):
     
     
     for i in range(len(wl_arrs)):        
-        dat = Table( [wl_arrs[i], host_fluxes[i]], names=['RestWavelength', 'FeII_Hbeta'] )
+        dat = Table( [wl_arrs[i], host_fluxes[i]], names=['RestWavelength', 'FeII_Halpha'] )
         dat.write(output_fnames[i], format='ascii', overwrite=True)
     
     return
@@ -184,7 +175,7 @@ def save_feii_fluxes(wl_arrs, host_fluxes, output_dir):
 def interpolate_fe2_flux(rest_wl, host_flux_fname, kind='linear'):
     dat = Table.read(host_flux_fname, format='ascii')
     ref_wl = np.array(dat['RestWavelength'])
-    ref_flux = np.array(dat['FeII_Hbeta'])
+    ref_flux = np.array(dat['FeII_Halpha'])
     
     spl = splrep(ref_wl, ref_flux, s=0)
     interp_host_flux = splev(rest_wl, spl, der=0)
@@ -192,7 +183,7 @@ def interpolate_fe2_flux(rest_wl, host_flux_fname, kind='linear'):
     return interp_host_flux
 
 
-def remove_fe2_hb_flux(wl, flux, ref_feii_fname, z=None):
+def remove_fe2_ha_flux(wl, flux, ref_feii_fname, z=None):
     if z is None:
         z = 0.0
     
@@ -210,4 +201,4 @@ if __name__ == '__main__':
     wl_arrs, feii_fluxes = get_feii_flux( len(spec_prop), res_dir,
                                     100, 200, 10,
                                     ra, dec, linefit=True)
-    save_feii_fluxes(wl_arrs, feii_fluxes, '/data3/stone28/2drm/sdssrm/constants/fe2_hb/rm{:03d}/'.format(rmid))
+    save_feii_fluxes(wl_arrs, feii_fluxes, '/data3/stone28/2drm/sdssrm/constants/fe2_ha/rm{:03d}/'.format(rmid))
