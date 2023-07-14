@@ -192,7 +192,7 @@ def interpolate_fe2_flux(rest_wl, host_flux_fname, kind='linear'):
     return interp_host_flux
 
 
-def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, z=None):
+def remove_fe2_hb_flux(wl, flux, ref_feii_fname, z=None):
     if z is None:
         z = 0.0
     
