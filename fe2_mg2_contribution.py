@@ -34,7 +34,7 @@ if __name__ == '__main__':
     
     
 
-def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit):
+def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefit, mask_line):
 
     print('Fitting FeII-MgII contribution for epoch {:03d}'.format(ind+1))
     
@@ -52,16 +52,20 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
     plateid = spec_prop['plateid'][ind]
     fiberid = spec_prop['fiberid'][ind]
 
-    wave_range = np.array([2500, 3500])
+    wave_range = np.array([2200, 3090])
+    if mask_line:
+        wave_mask = np.array([[2675, 2925]])
+    else:
+        wave_mask = None
 
     qi = QSOFit(lam, flux, err, z, ra=ra, dec=dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                 and_mask_in=and_mask, or_mask_in=or_mask)
     
     qi.Fit(name='Object', nsmooth=1, deredden=True, 
             and_mask=True, or_mask=True,
-        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-        decompose_host=False, npca_gal=5, npca_qso=20, 
-        Fe_uv_op=True, poly=True,
+        reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+        decompose_host=False,
+        Fe_uv_op=True, poly=False,
         rej_abs_conti=False, rej_abs_line=rej_abs_line,
         MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
         save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
@@ -74,7 +78,8 @@ def host_job(ind, ra, dec, qsopar_dir, rej_abs_line, nburn, nsamp, nthin, linefi
 
 def get_feii_flux(njob, qsopar_dir, nburn, nsamp, nthin,
                  ra, dec,
-                 rej_abs_line=False, linefit=False, ncpu=None):
+                 rej_abs_line=False, linefit=False, mask_line=False, 
+                 ncpu=None):
 
     arg1 = np.array( range(njob) )
     arg2 = np.full(njob, ra)
@@ -86,12 +91,13 @@ def get_feii_flux(njob, qsopar_dir, nburn, nsamp, nthin,
     arg7 = np.full(njob, nsamp)
     arg8 = np.full(njob, nthin)
     arg9 = np.full(njob, linefit, dtype=bool)
+    arg10 = np.full(njob, mask_line, dtype=bool)
     
     for i in arg1:
         arg4.append(qsopar_dir)
         
         
-    argtot = zip(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
+    argtot = zip(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)
 
     if ncpu is None:
         ncpu = njob
@@ -102,28 +108,33 @@ def get_feii_flux(njob, qsopar_dir, nburn, nsamp, nthin,
     pool.join()    
     
     
-    wl_arrs = []
+    
+    
+    wl_fe = np.linspace(2200, 3090, 3000)
+    
     feii_arrs = []
+    cont_arrs = []
     for i in range(njob):
-        wl_arrs.append(qi_arr[i].wave)
-        feii_arrs.append( qi_arr[i].f_fe_mgii_model + qi_arr[i].f_fe_balmer_model )
+        pp_tot = qi_arr[i].conti_result[7::2].astype(float)
+        
+        feii_arrs.append( qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3] ) + qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[3:6] ) )
+        cont_arrs.append( qi_arr[i].PL(wl_fe, pp_tot) )
     
-    
-    return wl_arrs, feii_arrs
+    return wl_fe, feii_arrs, cont_arrs
 
 
 
-def save_feii_fluxes(wl_arrs, host_fluxes, output_dir):
+def save_feii_fluxes(wl_fe, fe2_fluxes, cont_fluxes, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
     
     output_fnames = []
-    for i in range(len(wl_arrs)):
+    for i in range(len(fe2_fluxes)):
         output_fnames.append( output_dir + 'FeII_fit_epoch{:03d}.dat'.format(i+1) )
     
     
-    for i in range(len(wl_arrs)):        
-        dat = Table( [wl_arrs[i], host_fluxes[i]], names=['RestWavelength', 'FeII_MgII'] )
+    for i in range(len(fe2_fluxes)):        
+        dat = Table( [wl_fe, fe2_fluxes[i], cont_fluxes[i]], names=['RestWavelength', 'FeII_MgII', 'PL_Cont'] )
         dat.write(output_fnames[i], format='ascii', overwrite=True)
     
     return
@@ -134,25 +145,39 @@ def save_feii_fluxes(wl_arrs, host_fluxes, output_dir):
 ###################### SUBTRACT SAVED FeII MgII FLUX ###############################
 ####################################################################################
 
-def interpolate_fe2_flux(rest_wl, host_flux_fname, kind='linear'):
-    dat = Table.read(host_flux_fname, format='ascii')
+def interpolate_fe2_flux(rest_wl, ref_flux_fname, cont=False):
+    dat = Table.read(ref_flux_fname, format='ascii')
     ref_wl = np.array(dat['RestWavelength'])
     ref_flux = np.array(dat['FeII_MgII'])
     
     spl = splrep(ref_wl, ref_flux, s=0)
-    interp_host_flux = splev(rest_wl, spl, der=0)
+    interp_fe2_flux = splev(rest_wl, spl, der=0)
     
-    return interp_host_flux
+    if cont:
+        ref_cont = np.array(dat['PL_Cont'])
+        
+        spl = splrep(ref_wl, ref_cont, s=0)
+        interp_cont = splev(rest_wl, spl, der=0)
+        
+        return interp_fe2_flux, interp_cont
+    
+    else:
+        return interp_fe2_flux
 
 
-def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, z=None):
+def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, z=None, cont=False):
     if z is None:
         z = 0.0
     
     rest_wl = wl / (1+z)
-    interp_host_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname)
     
-    return flux - interp_host_flux
+    if cont:
+        interp_fe2_flux, interp_cont_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname, cont=cont)
+        return flux - interp_fe2_flux - interp_cont_flux
+    
+    else:
+        interp_fe2_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname)
+        return flux - interp_fe2_flux
 
 
 ####################################################################################
@@ -160,7 +185,8 @@ def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, z=None):
 ####################################################################################
 
 if __name__ == '__main__':
-    wl_arrs, feii_fluxes = get_feii_flux( len(spec_prop), res_dir,
+    wl_fe, feii_fluxes, cont_fluxes = get_feii_flux( len(spec_prop), res_dir,
                                     100, 200, 10,
-                                    ra, dec)
-    save_feii_fluxes(wl_arrs, feii_fluxes, '/data3/stone28/2drm/sdssrm/constants/fe2_mg2/rm{:03d}/'.format(rmid))
+                                    ra, dec, linefit=False,
+                                    mask_line=True)
+    save_feii_fluxes(wl_fe, feii_fluxes, cont_fluxes, '/data3/stone28/2drm/sdssrm/constants/fe2_mg2/rm{:03d}/'.format(rmid))
