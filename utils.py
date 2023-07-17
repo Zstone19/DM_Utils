@@ -199,7 +199,7 @@ def get_spec_dat(rmid, spec_path, p0_path, summary_path, res_path=None, line_pat
     
     #Sort by epoch
     sort_ind = np.argsort(epoch_arr)
-    table_arr = np.array(table_arr)[sort_ind]
+    table_arr = np.array(table_arr, dtype=object)[sort_ind]
     spec_files = np.array(spec_files)[sort_ind]
 
     mjd_arr = mjd_arr[sort_ind]
