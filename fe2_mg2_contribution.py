@@ -300,18 +300,24 @@ def resave_feii_fluxes(indices, wl_fe, fe2_fluxes, cont_fluxes, output_dir):
 
 
 def refit_bad_epochs(fit_dir, qsopar_dir, nburn, nsamp, nthin, ra, dec,
+                     all=False, norm=False, fwhm=True, shift=False,
                      rej_abs_line=False, linefit=False, mask_line=False,
                      ncpu=None):
+    
     
     #Get filenames
     fit_fnames = glob.glob(fit_dir + 'FeII_fit_epoch*.dat')
     nepoch = len(fit_fnames)
     fit_fnames = [ fit_dir + 'FeII_fit_epoch{:03d}.dat'.format(i+1) for i in range(nepoch) ]
-        
-    bad_mask = find_bad_fits(fit_fnames)
-    indices = np.argwhere(bad_mask).T[0]
     
-    print('Epochs to refit: ', indices+1)
+    bad_mask = find_bad_fits(fit_fnames)
+
+    if all:
+        indices = np.array( range(nepoch) )
+        print('Refitting all epochs')
+    else:
+        indices = np.argwhere(bad_mask).T[0]
+        print('Epochs to refit: ', indices+1)
     
     
     #Get fixed parameters (seems like only FWHM matters)
@@ -319,9 +325,15 @@ def refit_bad_epochs(fit_dir, qsopar_dir, nburn, nsamp, nthin, ra, dec,
     
     norm_fix = np.median( param_dat['Norm'][~bad_mask].tolist() )
     fwhm_fix = np.median( param_dat['FWHM'][~bad_mask].tolist() )
-    shoft_fix = np.median( param_dat['Shift'][~bad_mask].tolist() )
-    fixed_params = [None, fwhm_fix, None]
-    
+    shift_fix = np.median( param_dat['Shift'][~bad_mask].tolist() )
+
+    fixed_params = [None, None, None]  
+    if norm:
+        fixed_params[0] = norm_fix
+    if fwhm:
+        fixed_params[1] = fwhm_fix
+    if shift:
+        fixed_params[2] = shift_fix
     
     
     #Run fitting again
@@ -388,4 +400,6 @@ if __name__ == '__main__':
     save_feii_fluxes(wl_fe, feii_fluxes, cont_fluxes, output_dir)
     
     refit_bad_epochs(output_dir, res_dir, 100, 200, 10,
-                     ra, dec, linefit=False, mask_line=True)
+                     ra, dec, 
+                     all=True, fwhm=True, shift=True,
+                     linefit=False, mask_line=True)
