@@ -20,10 +20,10 @@ def move_line_profs(res_dir, out_dir, lines_in, lines_out):
 
 
 if __name__ == '__main__':
-    res_dir = '/data3/stone28/2drm/sdssrm/fit_res_ha/rm160/'
+    res_dir = '/data3/stone28/2drm/sdssrm/fit_res_mg2/rm160/'
     out_dir = '/data3/stone28/2drm/sdssrm/line_profs2/rm160/'
 
-    lines_in = ['Ha_br']
-    lines_out = ['ha']
+    lines_in = ['MgII_br']
+    lines_out = ['mg2']
 
     move_line_profs(res_dir, out_dir, lines_in, lines_out)

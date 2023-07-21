@@ -469,32 +469,9 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
                     
             prof_tot_rebin[n,j] = mean_prof
             err_tot_rebin[n,j] = err_prof
-            
-            
-
-    #Interpolate over NaNs
-    for n in range(len(wl_tot)):
-        nan_mask = np.isnan(prof_tot_rebin[n])
-        
-        if len(np.argwhere(nan_mask).T[0]) == 0:
-            continue
-        
-        xgood = wl_tot_rebin[n][~nan_mask]
-        ygood = prof_tot_rebin[n][~nan_mask]
-        
-        xtot = wl_tot_rebin[n]
-        
-        
-        #This is with B-Splines
-        spl = splrep(xgood, ygood, s=0)
-        prof_tot_rebin[n] = splev(xtot, spl)        
-        
-        # #This is with interp1d
-        # func = interp1d(xgood, ygood, kind='cubic')
-        
-
     
     
+
     #See if there are NaNs on the edges
     nan_ind = np.argwhere( np.isnan(prof_tot_rebin) )
     
@@ -565,6 +542,26 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
         prof_tot_rebin = prof_tot_rebin[:, :new_right]
         err_tot_rebin = err_tot_rebin[:, :new_right]
 
+
+    #Interpolate over NaNs
+    for n in range(len(wl_tot)):
+        nan_mask = np.isnan(prof_tot_rebin[n])
+        
+        if len(np.argwhere(nan_mask).T[0]) == 0:
+            continue
+        
+        xgood = wl_tot_rebin[n][~nan_mask]
+        ygood = prof_tot_rebin[n][~nan_mask]
+        
+        xtot = wl_tot_rebin[n]
+        
+        
+        #This is with B-Splines
+        spl = splrep(xgood, ygood, s=0)
+        prof_tot_rebin[n] = splev(xtot, spl)        
+        
+        # #This is with interp1d
+        # func = interp1d(xgood, ygood, kind='cubic')
 
 
     #Deal with NaNs in the error
