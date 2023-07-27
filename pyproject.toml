@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "dm-utils"
+name = "dmutils"
 version = "0.1.0"
 description = "Utilities for extracting emission line data from AGN spectra and running analysis through BRAINS"
 authors = ["Zachary Stone"]
