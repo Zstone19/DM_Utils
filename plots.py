@@ -894,7 +894,7 @@ class Result:
         values = []
         for i in range(len(names)):
             if i in [0, 11, 12, 13, 14, 16, 20, 21]:
-                values.append(val2latex(  bp.results['sample'][:,i]/np.log(10)  ))
+                values.append(val2latex(  self.bp.results['sample'][:,i]/np.log(10)  ))
             elif i == 8:
                 mbh_samps = self.bp.results['sample'][:,i]/np.log(10) + 6
                 values.append(val2latex( mbh_samps ))
