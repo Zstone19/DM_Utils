@@ -5,7 +5,7 @@ import os
 import glob
 import gzip
 
-import utils
+from dmutils import utils
 
 class Object:
     

@@ -9,7 +9,7 @@ from pyqsofit.PyQSOFit import QSOFit
 
 import multiprocessing as mp
 import os
-import utils
+from dmutils import utils
 import sys
 
 

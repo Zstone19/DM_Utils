@@ -8,7 +8,7 @@ from scipy.interpolate import splrep, splev
 from pyqsofit.PyQSOFit import QSOFit
 
 import os
-import utils
+from dmutils import utils
 import sys
 import glob
 

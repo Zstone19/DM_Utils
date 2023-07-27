@@ -9,7 +9,7 @@ from pyqsofit.PyQSOFit import QSOFit
 from host_contribution import remove_host_flux
 
 import os
-import utils
+from dmutils import utils
 import sys
 
 
