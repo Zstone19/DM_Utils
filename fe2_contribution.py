@@ -180,7 +180,8 @@ def check_rerun(qi, line_name):
 
 def host_job(ind, obj, qsopar_dir, line_name,
              rej_abs_line, 
-             nburn, nsamp, nthin, 
+             nburn, nsamp, nthin,
+             host_dir=None,
              linefit=False, mask_line=True, 
              Fe_uv_params=None, Fe_uv_range=None,
              Fe_op_params=None, Fe_op_range=None):
@@ -212,17 +213,21 @@ def host_job(ind, obj, qsopar_dir, line_name,
         else:
             wave_mask = None
             
+        assert host_dir is not None, 'Must provide host_dir for H-beta'
+            
     elif line_name == 'ha':
         wave_range = np.array([6000, 7000])
         if mask_line:
             wave_mask = None
         else:
             wave_mask = None
+            
+        assert host_dir is not None, 'Must provide host_dir for H-alpha'
 
 
     if line_name in ['ha', 'hb']:
         flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
-                                                            '/data3/stone28/2drm/sdssrm/constants/host_fluxes/rm{:03d}/best_host_flux.dat'.format(obj.rmid), 
+                                                            host_dir + 'rm{:03d}/best_host_flux.dat'.format(obj.rmid), 
                                                             z=obj.z)
 
 
@@ -277,6 +282,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
 
 def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
                  output_dir, line_name, 
+                 host_dir=None,
                  rej_abs_line=False, linefit=False, mask_line=False, 
                  Fe_uv_params=None, Fe_uv_range=None,
                  Fe_op_params=None, Fe_op_range=None,
@@ -286,6 +292,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
     njob = len(indices)
     new_host_job = partial(host_job, 
                            obj=obj, qsopar_dir=qsopar_dir, line_name=line_name,
+                           host_dir=host_dir,
                            rej_abs_line=rej_abs_line,
                            nburn=nburn, nsamp=nsamp, nthin=nthin,
                            linefit=linefit, mask_line=mask_line,
@@ -458,6 +465,7 @@ def find_bad_fits(fit_fnames, param_fname, line_name, method='prof', nsig=3):
 
 
 def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
+                     host_dir=None,
                      fix=None, ranges=None, all=False, method='both', nsig=3,
                      rej_abs_line=False, linefit=False, mask_line=False,
                      ncpu=None):
@@ -555,7 +563,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     
     #Run fitting again
     wl_fe, fe2_fluxes, cont_fluxes = get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
-                                                fit_dir, line_name,
+                                                fit_dir, line_name, host_dir=host_dir,
                                                 rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line, 
                                                 Fe_uv_params=fixed_params_uv, Fe_uv_range=range_params_uv,
                                                 Fe_op_params=fixed_params_op, Fe_op_range=range_params_op,
@@ -569,6 +577,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
 
 
 def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
+                      host_dir=None,
                      fix=None, ranges=None, all=False, method='both',
                      rej_abs_line=False, linefit=False, mask_line=False,
                      ncpu=None, niter=2):
@@ -582,7 +591,7 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     nsig_arr = np.full(niter, 3, dtype=int)
 
     #First iteration
-    masks_tot = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
+    masks_tot = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name, host_dir=host_dir,
                                 fix=fix, ranges=ranges, all=all, method=method, nsig=nsig_arr[0],
                                 rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line,
                                 ncpu=ncpu)
@@ -713,3 +722,12 @@ def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, line_name, z=None, cont=False)
         interp_fe2_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname)
         return flux - interp_fe2_flux
 
+
+##########################################################################################
+##########################################################################################
+##########################################################################################
+
+#HOW TO:
+# 1. Run "get_feii_flux" to get preliminary results for the FeII flux for a given line
+# 2. Save all of the fluxes with "save_feii_flux"
+# 3. Run "iterate_refitting" to refit the badly fit epochs (sometimes multiple times depending on the method you choose)
