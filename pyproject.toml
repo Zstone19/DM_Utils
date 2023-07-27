@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "dm-utils"
+version = "0.1.0"
+description = "Utilities for extracting emission line data from AGN spectra and running analysis through BRAINS"
+authors = ["Zachary Stone"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.13"
+numpy = "1.23.5"
+scipy = "^1.11.1"
+matplotlib = "^3.7.2"
+astropy = "^5.3.1"
+pyqsofit = {git = "https://github.com/Zstone19/PyQSOFit"}
+palettable = "^3.3.3"
+bbackend = {git = "https://github.com/LiyrAstroph/BRAINS.git", rev = "master", subdirectory = "analysis"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

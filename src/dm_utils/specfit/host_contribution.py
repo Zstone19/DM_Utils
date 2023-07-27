@@ -1,5 +1,4 @@
 import numpy as np
-import multiprocessing as mp
 
 from astropy.table import Table
 from astropy.io import fits
@@ -8,6 +7,7 @@ from scipy.interpolate import interp1d
 
 from pyqsofit.PyQSOFit import QSOFit
 
+import multiprocessing as mp
 import os
 import utils
 import sys
