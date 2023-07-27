@@ -6,7 +6,7 @@ from astropy.table import Table
 from scipy.interpolate import splrep, splev
 
 from pyqsofit.PyQSOFit import QSOFit
-from host_contribution import remove_host_flux
+from dmutils.host_contribution import remove_host_flux
 
 import os
 from dmutils import utils

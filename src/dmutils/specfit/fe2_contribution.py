@@ -8,7 +8,7 @@ import glob
 from functools import partial
 
 from pyqsofit.PyQSOFit import QSOFit
-from host_contribution import remove_host_flux
+from dmutils.host_contribution import remove_host_flux
 
 
 ##########################################################################################
