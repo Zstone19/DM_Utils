@@ -7,8 +7,6 @@ import gzip
 
 import utils
 
-
-
 class Object:
     
     def __init__(self, rmid):

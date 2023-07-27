@@ -473,7 +473,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
 
         possible_fix = ['norm', 'fwhm', 'shift']
         if fix is not None:
-            fix_params_uv = [None]*3
+            fixed_params_uv = [None]*3
             
             for i, name in enumerate(possible_fix):
                 if name in fix:
