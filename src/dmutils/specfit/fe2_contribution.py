@@ -336,7 +336,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
     if (Fe_uv_params is None) and (Fe_uv_range is None) and (Fe_op_params is None) and (Fe_op_range is None):
         save_feii_params(qi_arr, output_dir, line_name)
     else:
-        resave_feii_params(indices, Fe_uv_params, qi_arr, output_dir, line_name)
+        resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, line_name)
     
     return wl_fe, feii_arrs, cont_arrs
 
