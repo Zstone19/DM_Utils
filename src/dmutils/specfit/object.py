@@ -18,7 +18,7 @@ class Object:
         summary_dir = '/data2/yshen/sdssrm/public/'
 
         self.raw_spec_dir = dat_dir + 'RMID_{:03d}/'.format(rmid)
-        self.p0_filename = p0_dir + 'rm{:03d}/rm{:03d}p0_t.dat'.format(rmid, rmid)
+        self.p0_filename = p0_dir + 'rm{:03d}/rm{:03d}_p0_t.dat'.format(rmid, rmid)
         self.summary_filename = summary_dir + 'summary.fits'
         
         
