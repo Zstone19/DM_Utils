@@ -74,7 +74,10 @@ def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, 
             for j in range(3):
                 if Fe_uv_params[j] is None:
                     tot_params[i, 2*j] = pp_tot[2*j]
-                    tot_params[i, 2*j + 1] = pp_tot[2*j + 1]        
+                    tot_params[i, 2*j + 1] = pp_tot[2*j + 1]   
+                else:
+                    tot_params[i, 2*j] = Fe_uv_params[j]
+                    tot_params[i, 2*j + 1] = 0.     
         
         
         colnames = ['Norm', 'Norm_Err', 'FWHM', 'FWHM_Err', 'Shift', 'Shift_Err']
