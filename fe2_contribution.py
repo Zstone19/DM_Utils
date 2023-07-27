@@ -121,6 +121,28 @@ def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, 
     return
 
 
+def save_feii_fluxes(wl_fe, fe2_fluxes, cont_fluxes, output_dir, line_name):
+
+    os.makedirs(output_dir, exist_ok=True)
+    
+    output_fnames = []
+    for i in range(len(fe2_fluxes)):
+        output_fnames.append( output_dir + 'FeII_fit_epoch{:03d}.dat'.format(i+1) )
+    
+    if line_name == 'mg2':
+        colname = 'FeII_MgII'
+    elif line_name == 'hb':
+        colname = 'FeII_Hbeta'
+    elif line_name == 'ha':
+        colname = 'FeII_Halpha'
+    
+    for i in range(len(fe2_fluxes)):        
+        dat = Table( [wl_fe, fe2_fluxes[i], cont_fluxes[i]], names=['RestWavelength', colname, 'PL_Cont'] )
+        dat.write(output_fnames[i], format='ascii', overwrite=True)
+    
+    return
+
+
 ##########################################################################################
 ################################### The First Run-Through ################################
 ##########################################################################################
