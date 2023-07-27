@@ -26,7 +26,7 @@ def save_feii_params(qi_arr, output_dir, line_name):
             #Fe_uv_model
             pp_tot = qi_arr[i].conti_result[7:].astype(float)
                 
-            for j in range( int(tot_params.shape[1]//2) ):
+            for j in range(3):
                 tot_params[i, 2*j] = pp_tot[2*j]
                 tot_params[i, 2*j + 1] = pp_tot[2*j + 1]        
         
@@ -34,13 +34,13 @@ def save_feii_params(qi_arr, output_dir, line_name):
         
         
     elif line_name in ['hb', 'ha']:        
-        tot_params = np.zeros( (len(epochs), 3*2*2) )
+        tot_params = np.zeros( (len(epochs), 6*2) )
 
         for i in range(len(epochs)):
             #Fe_uv_model and Fe_op_model
             pp_tot = qi_arr[i].conti_result[7:].astype(float)
                 
-            for j in range( int(tot_params.shape[1]//2) ):
+            for j in range(6):
                 tot_params[i, 2*j] = pp_tot[2*j]
                 tot_params[i, 2*j + 1] = pp_tot[2*j + 1]                        
         
@@ -50,7 +50,7 @@ def save_feii_params(qi_arr, output_dir, line_name):
         
 
 
-    dat = Table( [[epochs]], names=['Epoch'] )
+    dat = Table( [epochs], names=['Epoch'] )
     for i in range(len(colnames)):
         dat[colnames[i]] = tot_params[:, i]
 
