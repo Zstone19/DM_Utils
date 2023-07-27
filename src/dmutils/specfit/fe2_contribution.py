@@ -510,7 +510,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
             
             for i, name in enumerate(possible_fix):
                 if name in fix:
-                    fixed_params_uv[i] = vals[i,1]
+                    fixed_params_uv[i] = vals[1,i]
                 
         else:
             fixed_params_uv = None
@@ -521,7 +521,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
             
             for i, name in enumerate(possible_fix):
                 if name in ranges:
-                    range_params_uv[i] = [vals[i,0], vals[i,2]]
+                    range_params_uv[i] = [vals[0,i], vals[2,i]]
                     
         else:
             range_params_uv = None
