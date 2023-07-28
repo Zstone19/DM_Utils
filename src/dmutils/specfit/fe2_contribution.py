@@ -541,26 +541,39 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
             vals[:, i] = [lo, med, hi]
         
         
-        possible_fix = ['norm_uv', 'fwhm_uv', 'shift_uv', 'norm_op', 'fwhm_op', 'shift_op']
+        possible_fix_uv= ['norm_uv', 'fwhm_uv', 'shift_uv'] 
+        possible_fix_op = ['norm_op', 'fwhm_op', 'shift_op']
         if fix is not None:
-            fixed_params_uv = [None]*6
+            fixed_params_uv = [None]*3
+            fixed_params_op = [None]*3
             
-            for i, name in enumerate(possible_fix):
+            for i, name in enumerate(possible_fix_uv):
                 if name in fix:
                     fixed_params_uv[i] = vals[1, i]
                     
+            for i, name in enumerate(possible_fix_op):
+                if name in fix:
+                    fixed_params_op[i] = vals[1, i+3]
+                    
         else:
             fixed_params_uv = None
-            
+            fixed_params_op = None
+
         if ranges is not None:
-            range_params_uv = [None]*6
+            range_params_uv = [None]*3
+            range_params_op = [None]*3
             
-            for i, name in enumerate(possible_fix):
+            for i, name in enumerate(possible_fix_uv):
                 if name in ranges:
                     range_params_uv[i] = [vals[0, i], vals[2, i]]
                     
+            for i, name in enumerate(possible_fix_op):
+                if name in ranges:
+                    range_params_op[i] = [vals[0, i+3], vals[2, i+3]]
+       
         else:
             range_params_uv = None
+            range_params_op = None
             
         
         
