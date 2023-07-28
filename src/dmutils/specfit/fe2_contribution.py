@@ -190,6 +190,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
              Fe_op_params=None, Fe_op_range=None):
 
     print('Fitting FeII-{} contribution for epoch {:03d}'.format(line_name, ind+1))
+    assert line_name in ['mg2', 'hb', 'ha']
     
     lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
     flux = np.array(obj.table_arr[ind]['corrected_flux'])
@@ -264,7 +265,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
             qi.Fit(name='Object', nsmooth=1, deredden=True, 
                     and_mask=True, or_mask=True,
                     reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                    decompose_host=False, npca_gal=5, npca_qso=20, 
+                    decompose_host=False, 
                     Fe_uv_op=True, poly=False,
                     rej_abs_conti=False, rej_abs_line=rej_abs_line,
                     MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
@@ -300,7 +301,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
                            nburn=nburn, nsamp=nsamp, nthin=nthin,
                            linefit=linefit, mask_line=mask_line,
                            Fe_uv_params=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                            Fe_op_params=Fe_op_params, Fe_op_range=Fe_op_range)
+                           Fe_op_params=Fe_op_params, Fe_op_range=Fe_op_range)
 
     if ncpu is None:
         ncpu = njob
@@ -327,7 +328,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
         
         
         if line_name == 'mg2':
-            feii_arrs.append( qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3] ) + qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[3:6] ) )
+            feii_arrs.append( qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3] ) )
         elif line_name in ['hb', 'ha']:
             feii_mgii = qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3])
             feii_balmer = qi_arr[i].Fe_flux_balmer(wl_fe, pp_tot[3:6])
