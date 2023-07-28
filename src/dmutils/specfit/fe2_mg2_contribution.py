@@ -104,7 +104,7 @@ def save_feii_params(qi_arr, output_dir):
         shift_err.append(pp_tot[5])
     
     
-    dat = Table( [epochs, shift, shift_err, norm, norm_err, fwhm, fwhm_err],
+    dat = Table( [epochs, norm, norm_err, fwhm, fwhm_err, shift, shift_err],
                 names=['Epoch', 'Norm', 'Norm_Err', 'FWHM', 'FWHM_Err', 'Shift', 'Shift_Err'] )
     dat.write( output_dir + 'best_fit_params.dat', format='ascii', overwrite=True )
     
