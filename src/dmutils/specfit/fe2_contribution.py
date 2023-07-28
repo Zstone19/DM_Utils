@@ -656,7 +656,7 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     
 
     for i in range(niter - 1):
-        mask_i = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
+        mask_i = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name, host_dir=host_dir,
                                 fix=fix_arr[i], ranges=ranges, all=False, method=method, nsig=nsig_arr[i+1],
                                 rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line,
                                 ncpu=ncpu)
@@ -694,11 +694,21 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     #Force fit these epochs
     if len(bad_indices) > 0:
         print('Fixing epochs:', np.array(bad_indices)+1)
-        refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
-                        fix=['norm', 'fwhm', 'shift'], ranges=ranges, all=bad_indices, method=method, nsig=1,
-                        rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line,
-                        ncpu=ncpu)
         
+        if line_name == 'mg2':
+            refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name, host_dir=host_dir,
+                            fix=['norm', 'fwhm', 'shift'], 
+                            ranges=ranges, all=bad_indices, method=method, nsig=1,
+                            rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line,
+                            ncpu=ncpu)
+
+        else:
+            refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name, host_dir=host_dir,
+                            fix=['norm_uv', 'fwhm_uv', 'shift_uv', 'norm_op', 'fwhm_op', 'shift_op'], 
+                            ranges=ranges, all=bad_indices, method=method, nsig=1,
+                            rej_abs_line=rej_abs_line, linefit=linefit, mask_line=mask_line,
+                            ncpu=ncpu)
+
     
     #Save refit data
     with open(fit_dir + 'refit_data.dat', '+a') as f:
