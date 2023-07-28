@@ -628,18 +628,33 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     if all is True:
         niter = 2
         
-        if fix == ['fwhm']:
-            fix_arr = [['shift', 'fwhm']] 
-            fix_arr = [fix]    
+        if line_name == 'mg2':
+            if fix == ['fwhm']:
+                fix_arr = [['shift', 'fwhm']] 
+                fix_arr = [fix]    
+                    
+            if fix == ['shift']:
+                fix_arr = [['shift', 'fwhm']]
+                fix_arr = [fix]
                 
-        if fix == ['shift']:
-            fix_arr = [['shift', 'fwhm']]
-            fix_arr = [fix]
+            if ('fwhm' in fix) and ('shift' in fix):
+                fix_arr = [['shift', 'fwhm']]
+                fix_arr = [fix]
+                
+        else:
+            cond1 = ('fwhm_uv' in fix) and ('fwhm_op' in fix)
+            cond2 = ('shift_uv' in fix) and ('shift_op' in fix)
             
-        if ('fwhm' in fix) and ('shift' in fix):
-            fix_arr = [['shift', 'fwhm']]
-            fix_arr = [fix]
+            if cond1 and (len(fix)==2):
+                fix_arr = [['shift_uv', 'fwhm_uv', 'shift_op', 'fwhm_op']]
+                
+            if cond2 and (len(fix)==2):
+                fix_arr = [['shift_uv', 'fwhm_uv', 'shift_op', 'fwhm_op']]
+                
+            if cond1 and cond2 and (len(fix)==4):
+                fix_arr = [['shift_uv', 'fwhm_uv', 'shift_op', 'fwhm_op']]    
     
+
     for i in range(niter - 1):
         mask_i = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
                                 fix=fix_arr[i], ranges=ranges, all=False, method=method, nsig=nsig_arr[i+1],
