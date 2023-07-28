@@ -765,7 +765,7 @@ def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, line_name, z=None, cont=False)
         return flux - interp_fe2_flux - interp_cont_flux
     
     else:
-        interp_fe2_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname)
+        interp_fe2_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname, line_name)
         return flux - interp_fe2_flux
 
 
