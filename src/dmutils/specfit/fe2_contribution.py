@@ -622,6 +622,10 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
         if fix == ['shift']:
             fix_arr = [['shift', 'fwhm']]
             fix_arr = [fix]
+            
+        if ('fwhm' in fix) and ('shift' in fix):
+            fix_arr = [['shift', 'fwhm']]
+            fix_arr = [fix]
     
     for i in range(niter - 1):
         mask_i = refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
