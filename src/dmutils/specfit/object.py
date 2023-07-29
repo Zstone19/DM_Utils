@@ -94,6 +94,9 @@ class Object:
             self.table_arr[i]['corrected_err'] = np.array(self.table_arr[i]['Flux_Err']) / self.lnp0_dat['p0'][i]
 
 
+    def get_fe2_params(self, path):
+        self.fe2_params = Table.read( path + 'best_fit_params.dat', format='ascii' )
+        return
 
 
     def get_fit_res(self, res_path):
