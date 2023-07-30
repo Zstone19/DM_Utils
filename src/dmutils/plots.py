@@ -715,13 +715,14 @@ class Result:
 ################################# SUMMARY PLOTS ###############################
 ###############################################################################
 
-    def summary1(self, output_fname=None, show=False):
+    def summary1(self, ymax=500, output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
         """
         
         fig = plt.figure(figsize=(12, 7))
-        gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, height_ratios=[1,1.1])
+        gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, 
+                                   height_ratios=[1,1.1], width_ratios=[1.1,1])
         
         
         #TOP: Profiles
@@ -739,7 +740,7 @@ class Result:
         
         #BOTTOM LEFT: Transfer Function
         ax_bl = fig.add_subplot(gs_bot[0])
-        ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=500, xbounds=[-5000,5000], show=False)
+        ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=ymax, xbounds=[-5000,5000], show=False)
         
         #BOTTOM RIGHT: LC Fits
         gs_br = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_bot[1:])
