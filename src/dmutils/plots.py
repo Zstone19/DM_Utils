@@ -91,7 +91,7 @@ class Result:
 
 
 
-    def line2d_plot(self, gaussian_smooth=False, gaussian_sig=[0,0],
+    def line2d_plot(self, gaussian_smooth=False, gaussian_sig=[0,0], xbounds=None,
                     ax=None, output_fname=None, show=False):
 
         c = const.c.cgs.value
@@ -225,6 +225,10 @@ class Result:
             
         for a in ax[:2]:
             a.tick_params('both', which='both', color='w', width=1.5)
+            
+        if xbounds is not None:
+            for a in ax:
+                a.set_xlim(xbounds)
         
         
         plt.subplots_adjust(wspace=0.05)
@@ -715,7 +719,8 @@ class Result:
 ################################# SUMMARY PLOTS ###############################
 ###############################################################################
 
-    def summary1(self, ymax=500, output_fname=None, show=False):
+    def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None, 
+                 output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
         """
@@ -731,7 +736,7 @@ class Result:
         ax3 = fig.add_subplot(gs_top[2], sharey=ax1, sharex=ax1)
         ax_top = [ax1, ax2, ax3]
         
-        ax_top = self.line2d_plot(ax=ax_top, show=False)
+        ax_top = self.line2d_plot(xbounds=line_xbounds, ax=ax_top, show=False)
         
         
         gs_bot = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[1,:], 
@@ -739,7 +744,7 @@ class Result:
         
         #BOTTOM LEFT: Transfer Function
         ax_bl = fig.add_subplot(gs_bot[0])
-        ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=ymax, xbounds=[-5000,5000], show=False)
+        ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
         
         #BOTTOM RIGHT: LC Fits
         gs_br = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_bot[1:])
