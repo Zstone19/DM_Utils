@@ -721,8 +721,7 @@ class Result:
         """
         
         fig = plt.figure(figsize=(12, 7))
-        gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, 
-                                   height_ratios=[1,1.1], width_ratios=[1.1,1])
+        gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, height_ratios=[1,1.1])
         
         
         #TOP: Profiles
@@ -736,7 +735,7 @@ class Result:
         
         
         gs_bot = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[1,:], 
-                                                  width_ratios=[1.5,1,1], wspace=.2)
+                                                  width_ratios=[1.5,1,1], wspace=.1)
         
         #BOTTOM LEFT: Transfer Function
         ax_bl = fig.add_subplot(gs_bot[0])
