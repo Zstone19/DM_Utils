@@ -278,7 +278,7 @@ class Result:
                     extent=[vel_vals[0], vel_vals[-1],t_vals[0], t_vals[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap)
 
-        ax.plot(vel_vals, env_vals, color='l', ls='--')
+        ax.plot(vel_vals, env_vals, color='lime', ls='--')
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -292,7 +292,7 @@ class Result:
         plt.colorbar(im, ax=ax, pad=.01, aspect=15)
         ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=15)
 
-        ax.axvline(0, color='l', ls='--')
+        ax.axvline(0, color='lime', ls='--')
 
 
         ax.tick_params('both', which='both', color='w', width=1.5)
