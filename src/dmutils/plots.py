@@ -168,7 +168,7 @@ class Result:
             plot_flux = data_flux.copy()
         
         
-        ax[0].pcolormesh(vel/1e3, time, plot_flux, cmap='viridis', vmin=vmin, vmax=vmax)
+        ax[0].pcolormesh(vel/1e3, time, plot_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
         
         #############################################################
         #Model data
@@ -190,7 +190,7 @@ class Result:
             vel_arr[i,:] = vel
             
         
-        ax[1].pcolormesh(vel_arr/1e3, time_arr, plot_flux, cmap='viridis', vmin=vmin, vmax=vmax)
+        ax[1].pcolormesh(vel_arr/1e3, time_arr, plot_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
         
         #############################################################
         #Residuals
@@ -278,7 +278,7 @@ class Result:
                     extent=[vel_vals[0], vel_vals[-1],t_vals[0], t_vals[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap)
 
-        ax.plot(vel_vals, env_vals, color='w', ls='--')
+        ax.plot(vel_vals, env_vals, color='l', ls='--')
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -292,10 +292,10 @@ class Result:
         plt.colorbar(im, ax=ax, pad=.01, aspect=15)
         ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=15)
 
-        ax.axvline(0, color='w', ls='--')
+        ax.axvline(0, color='l', ls='--')
 
 
-        ax.tick_params('both', which='both', color='lime', width=1.5)
+        ax.tick_params('both', which='both', color='w', width=1.5)
         ax.tick_params('both', which='major', length=6)
         ax.tick_params('both', which='minor', length=3)
                 
