@@ -190,7 +190,7 @@ class Result:
             vel_arr[i,:] = vel
             
         
-        ax[1].pcolormesh(vel_arr/1e3, time_arr, plot_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
+        ax[1].pcolormesh(vel_arr/1e3, time_arr, model_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
         
         #############################################################
         #Residuals
