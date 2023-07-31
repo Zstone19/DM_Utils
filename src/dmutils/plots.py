@@ -671,9 +671,9 @@ class Result:
             ax[1].plot( wl_in[mask], (prof_med[i][mask] - flux_in[i][mask])/flux_in[i][mask], color=sm.to_rgba(time_in[i]) )
             chi2.append( np.sum( (prof_med[i][mask] - flux_in[i][mask])**2 / err_in[i][mask]**2 )/self.bp.results['sample'].shape[1] )
             
-        ax[1].set_ylim(-2, ymax_r)
+        ax[1].set_ylim(-1.5, ymax_r)
 
-        ax[1].set_ylabel( r'$ (F_{\rm Model} - F_{\rm data})/F_{\rm data} $' )
+        ax[1].set_ylabel( r'$ (F_{\rm model} - F_{\rm data})/F_{\rm data} $' )
         ax[1].set_xlabel(r'Rest Wavelength [$\rm \AA$]')
 
 
