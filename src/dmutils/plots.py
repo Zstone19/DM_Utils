@@ -402,7 +402,7 @@ class Result:
             sm = ScalarMappable(norm=norm, cmap='coolwarm')
             cbar = plt.colorbar(sm, ax=ax, pad=.01, aspect=15)
             
-            cbar.ax.set_ylabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=13)
+            cbar.ax.set_ylabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=15, rotation=270, labelpad=20)
 
         
         if output_fname is not None:
