@@ -674,7 +674,7 @@ class Result:
         ax[1].set_ylim(-2, ymax_r)
 
         ax[1].set_ylabel( r'$ (F_{\rm Model} - F_{\rm data})/F_{\rm data} $' )
-        ax[1].set_xlabel(r'Rest Wavelength [\AA]')
+        ax[1].set_xlabel(r'Rest Wavelength [$\rm \AA$]')
 
 
 
