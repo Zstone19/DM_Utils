@@ -190,7 +190,7 @@ class Result:
         
         
         
-        im = ax[2].pcolormesh( vel_arr/1e3, time_arr, (plot_flux - model_flux)/np.sqrt(prof_err**2 + syserr_line**2), 
+        im = ax[2].pcolormesh( vel/1e3, time, (plot_flux - model_flux)/np.sqrt(prof_err**2 + syserr_line**2), 
                         cmap='RdBu_r', vmin=-7, vmax=7)
 
         #############################################################
