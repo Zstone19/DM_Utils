@@ -176,21 +176,7 @@ class Result:
         nt = int(self.bp.param._parser._sections['dump']['nlinerecon'])
         nv = int(self.bp.param._parser._sections['dump']['nvelrecon'])
         
-        wl = self.bp.data['line2d_data']['profile'][0, :, 0].copy()/(1+self.z)
-        vel = (c/1e5)*( wl - self.central_wl )/(self.central_wl)
-        vel = np.linspace(vel.min(), vel.max(), nv )
-        
-        t = self.bp.data['line2d_data']['time'].copy()
-        t = np.linspace(t.min(), t.max(), nt)
-        
-        time_arr = np.zeros( (nt, nv) )
-        vel_arr = np.zeros( (nt, nv) )
-        for i in range(nt):
-            time_arr[i,:] = t[i]
-            vel_arr[i,:] = vel
-            
-        
-        ax[1].pcolormesh(vel_arr/1e3, time_arr, model_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
+        ax[1].pcolormesh(vel/1e3, time, model_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
         
         #############################################################
         #Residuals
