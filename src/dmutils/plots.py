@@ -374,14 +374,14 @@ class Result:
             fig, ax = plt.subplots(1, 2, figsize=(11,5), sharey=True)    
         
         
-        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip], 
+        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
                     marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
         ax[0].set_xlabel('x', fontsize=18)
         ax[0].set_ylabel('z', fontsize=18)
         ax[0].set_title('Edge-On', fontsize=20)
         
 
-        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip], 
+        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
         ax[1].set_xlabel('y', fontsize=18)
         ax[1].set_title('Face-On', fontsize=20)
@@ -398,9 +398,12 @@ class Result:
             max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )
             min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
             
-            norm = Normalize(vmin=min_v, vmax=max_v)
+            norm = Normalize(vmin=min_v/1000, vmax=max_v/1000)
             sm = ScalarMappable(norm=norm, cmap='coolwarm')
             cbar = plt.colorbar(sm, ax=ax, pad=.01, aspect=15)
+            
+            cbar.ax.set_ylabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=13)
+
         
         if output_fname is not None:
             plt.savefig(output_fname, bbox_inches='tight', dpi=200)
