@@ -1,6 +1,5 @@
 import os
 import sys
-os.environ['PATH'] = '/home/stone28/software/texlive/install/bin/x86_64-linux/'
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -28,7 +27,7 @@ from bbackend import postprocess, bplotlib
 
 class Result:
     
-    def __init__(self, fname, line_name=None):
+    def __init__(self, fname, line_name=None, latex_dir=None):
         self.bp = bplotlib(fname)
         
         #Load parameters
@@ -49,6 +48,9 @@ class Result:
             self.line_name = 'Line'
         else:
             self.line_name = line_name
+            
+        #Latex directory
+        self.latex_dir = latex_dir
             
             
 
@@ -705,6 +707,24 @@ class Result:
 ###############################################################################
 ################################# SUMMARY PLOTS ###############################
 ###############################################################################
+
+    def add_latex_dir(self):
+        assert self.latex_dir is not None
+        os.environ['PATH'] = self.latex_dir
+        return
+
+    def li_summary_style2022(self):
+        assert self.latex_dir is not None
+        self.add_latex_dir()
+        self.bp.plot_results_2d_style2022()
+        return
+
+    def li_summary_style2018(self):
+        assert self.latex_dir is not None
+        self.add_latex_dir()
+        self.bp.plot_results_2d_style2018()
+        return
+
 
     def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
                  output_fname=None, show=False):
