@@ -633,7 +633,8 @@ class Result:
         
         
         
-    def prof_fit_quality_plot(self, wl_range=200, ax=None, output_fname=None, show=False):
+    def prof_fit_quality_plot(self, wl_range=200, ymax_l=35, ymax_r=2,
+                              ax=None, output_fname=None, show=False):
         
         time_in = self.bp.data['line2d_data']['time']
         wl_in = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
@@ -665,7 +666,7 @@ class Result:
             ax[1].plot( wl_in[mask], (prof_med[i][mask] - flux_in[i][mask])/flux_in[i][mask], color=sm.to_rgba(time_in[i]) )
             chi2.append( np.sum( (prof_med[i][mask] - flux_in[i][mask])**2 / err_in[i][mask]**2 )/self.bp.results['sample'].shape[1] )
             
-        ax[1].set_ylim(-2, 5)
+        ax[1].set_ylim(-2, ymax_r)
 
         ax[1].set_ylabel( r'$ (F_{\rm Model} - F_{\rm data})/F_{\rm data} $' )
         ax[1].set_xlabel(r'Rest Wavelength [\AA]')
@@ -678,7 +679,7 @@ class Result:
         ax[0].scatter( time_in, chi2, color='k', s=5 )
         ax[0].axhline(1, ls='--', color='gray')
 
-        ax[0].set_ylim(0, 35)
+        ax[0].set_ylim(0, ymax_l)
 
         ax[0].set_ylabel(r'$\chi^2_\nu$')
         ax[0].set_xlabel(r'MJD')
@@ -705,7 +706,7 @@ class Result:
 ################################# SUMMARY PLOTS ###############################
 ###############################################################################
 
-    def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None, 
+    def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
                  output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
