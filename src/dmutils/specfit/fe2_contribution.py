@@ -203,6 +203,9 @@ def host_job(ind, obj, qsopar_dir, line_name,
     plateid = obj.plateid[ind]
     fiberid = obj.fiberid[ind]
 
+    use_and_mask = True
+    use_or_mask = True
+
     if line_name == 'mg2':
         wave_range = np.array([2200, 3090])
         if mask_line:
@@ -227,6 +230,8 @@ def host_job(ind, obj, qsopar_dir, line_name,
             wave_mask = None
             
         assert host_dir is not None, 'Must provide host_dir for H-alpha'
+        use_and_mask = False
+        use_or_mask = False
 
 
     if line_name in ['ha', 'hb']:
@@ -240,7 +245,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
                 and_mask_in=and_mask, or_mask_in=or_mask)
     
     qi.Fit(name='Object', nsmooth=1, deredden=True, 
-            and_mask=True, or_mask=True,
+            and_mask=use_and_mask, or_mask=use_or_mask,
             reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
             decompose_host=False,
             Fe_uv_op=True, poly=False,
@@ -263,7 +268,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
                         and_mask_in=and_mask, or_mask_in=or_mask)
             
             qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                    and_mask=True, or_mask=True,
+                    and_mask=use_and_mask, or_mask=use_or_mask,
                     reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
                     decompose_host=False, 
                     Fe_uv_op=True, poly=False,
