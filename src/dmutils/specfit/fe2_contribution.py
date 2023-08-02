@@ -225,7 +225,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
     elif line_name == 'ha':
         wave_range = np.array([6100, 7000])
         if mask_line:
-            wave_mask = np.array([6400, 6800])
+            wave_mask = np.array([[6400, 6800]])
         else:
             wave_mask = None
             
