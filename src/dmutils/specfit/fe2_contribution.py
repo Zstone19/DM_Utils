@@ -223,9 +223,9 @@ def host_job(ind, obj, qsopar_dir, line_name,
         assert host_dir is not None, 'Must provide host_dir for H-beta'
             
     elif line_name == 'ha':
-        wave_range = np.array([6000, 7000])
+        wave_range = np.array([6100, 7000])
         if mask_line:
-            wave_mask = None
+            wave_mask = np.array([6400, 6800])
         else:
             wave_mask = None
             
@@ -323,7 +323,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
     elif line_name == 'hb':
         wl_fe = np.linspace(4435, 5535, 3000)
     elif line_name == 'ha':
-        wl_fe = np.linspace(6000, 7000, 3000)
+        wl_fe = np.linspace(6100, 7000, 3000)
 
 
     feii_arrs = []
