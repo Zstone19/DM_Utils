@@ -180,6 +180,11 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
                            nburn=nburn, nsamp=nsamp, nthin=nthin,
                            npca_gal=npca_gal, npca_qso=npca_qso,
                            linefit=linefit)
+    
+    
+    def special_func(ind, Fe_uv_params, Fe_op_params):
+        return new_host_job(ind, Fe_uv_params=Fe_uv_params, Fe_op_params=Fe_op_params)
+
 
     if Fe_uv_params is None:
         Fe_uv_params = [None]*njob        
@@ -192,7 +197,7 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
         ncpu = njob
 
     pool = mp.Pool(ncpu)
-    res = pool.starmap( new_host_job, args )
+    res = pool.starmap( special_func, args )
     pool.close()
     pool.join()    
     
