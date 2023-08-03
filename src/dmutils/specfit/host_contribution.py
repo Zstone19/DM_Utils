@@ -169,6 +169,7 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
 
 def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
                  rej_abs_line=False, linefit=False, 
+                 npca_gal=5, npca_qso=20,
                  Fe_uv_params=None, Fe_op_params=None, 
                  ncpu=None):
 
@@ -177,14 +178,21 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
                            obj=obj, qsopar_dir=qsopar_dir, line_name=line_name,
                            rej_abs_line=rej_abs_line, 
                            nburn=nburn, nsamp=nsamp, nthin=nthin,
-                           linefit=linefit, Fe_uv_params=Fe_uv_params, Fe_op_params=Fe_op_params)
+                           npca_gal=npca_gal, npca_qso=npca_qso,
+                           linefit=linefit)
 
+    if Fe_uv_params is None:
+        Fe_uv_params = [None]*njob        
+    if Fe_op_params is None:
+        Fe_op_params = [None]*njob
+
+    args = zip(indices, Fe_uv_params, Fe_op_params)
 
     if ncpu is None:
         ncpu = njob
 
     pool = mp.Pool(ncpu)
-    res = pool.map( new_host_job, indices )
+    res = pool.starmap( new_host_job, args )
     pool.close()
     pool.join()    
     
