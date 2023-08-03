@@ -164,6 +164,14 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
     return qi.wave, qi.host
 
 
+def special_host_job(ind, Fe_uv_params, Fe_op_params, 
+                      obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin, 
+                      npca_gal=5, npca_qso=20,
+                      linefit=False):
+    
+    return host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
+                    npca_gal=npca_gal, npca_qso=npca_qso,
+                    linefit=linefit, Fe_uv_params=Fe_uv_params, Fe_op_params=Fe_op_params)
 
 
 
@@ -174,16 +182,12 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
                  ncpu=None):
 
     njob = len(indices)
-    new_host_job = partial(host_job,
+    new_host_job = partial(special_host_job,
                            obj=obj, qsopar_dir=qsopar_dir, line_name=line_name,
                            rej_abs_line=rej_abs_line, 
                            nburn=nburn, nsamp=nsamp, nthin=nthin,
                            npca_gal=npca_gal, npca_qso=npca_qso,
                            linefit=linefit)
-    
-    
-    def special_func(ind, Fe_uv_params, Fe_op_params):
-        return new_host_job(ind, Fe_uv_params=Fe_uv_params, Fe_op_params=Fe_op_params)
 
 
     if Fe_uv_params is None:
@@ -197,7 +201,7 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
         ncpu = njob
 
     pool = mp.Pool(ncpu)
-    res = pool.starmap( special_func, args )
+    res = pool.starmap( new_host_job, args )
     pool.close()
     pool.join()    
     
