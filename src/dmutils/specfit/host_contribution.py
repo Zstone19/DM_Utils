@@ -107,13 +107,10 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
         poly = False
         wave_range = np.array([4435, 5535])
             
-        assert host_dir is not None, 'Must provide host_dir for H-beta'
-            
     elif line_name == 'ha':
         poly = False
         wave_range = np.array([6100, 7000])
             
-        assert host_dir is not None, 'Must provide host_dir for H-alpha'
         use_and_mask = False
         use_or_mask = False
         
