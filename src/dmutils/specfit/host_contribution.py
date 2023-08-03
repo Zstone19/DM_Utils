@@ -82,7 +82,7 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
     
     print('Fitting host contribution for epoch {:03d}'.format(ind+1))
     
-    assert line_name in ['mg2', 'hb', 'ha']
+    assert line_name in ['mg2', 'hb', 'ha', None]
     
     lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
     flux = np.array(obj.table_arr[ind]['corrected_flux'])
