@@ -254,7 +254,8 @@ def host_job(ind, obj, qsopar_dir, line_name,
             Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
             Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
             save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-            save_fits_name=None, save_fits_path=None, verbose=False)
+            save_fits_name=None, save_fits_path=None, verbose=False,
+            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
     
     
     #Rerun until line fit is good
@@ -277,7 +278,8 @@ def host_job(ind, obj, qsopar_dir, line_name,
                     Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
                     Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
                     save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                    save_fits_name=None, save_fits_path=None, verbose=False)
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
 
             rerun = check_rerun(qi, line_name)
 

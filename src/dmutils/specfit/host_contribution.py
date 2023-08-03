@@ -130,7 +130,8 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
             MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
             Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
             save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-            save_fits_name=None, save_fits_path=None, verbose=False)
+            save_fits_name=None, save_fits_path=None, verbose=False,
+            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
     
     
     if linefit: 
@@ -151,7 +152,8 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
                     MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
                     Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
                     save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                    save_fits_name=None, save_fits_path=None, verbose=False)
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
             
             
             rerun = check_rerun(qi, line_name)
