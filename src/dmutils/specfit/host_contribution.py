@@ -282,7 +282,7 @@ def interpolate_host_flux(rest_wl, host_flux_fname):
     mask = (rest_wl >= min_wl) & (rest_wl <= max_wl)
         
     spl = splrep(host_wl, host_flux, s=0)
-    interp_host_flux = splev(rest_wl, spl, der=0)
+    interp_host_flux = splev(rest_wl[mask], spl, der=0)
     
     return interp_host_flux, mask
 
