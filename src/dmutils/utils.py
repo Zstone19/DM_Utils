@@ -1,5 +1,6 @@
 from astropy.table import Table
 import numpy as np
+from scipy.interpolate import splev, splrep
 
 ############################################################################################################
 #Get input for BRAINS
