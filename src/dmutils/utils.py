@@ -1,291 +1,5 @@
 from astropy.table import Table
-from astropy.io import fits
 import numpy as np
-
-from scipy.interpolate import splev, splrep, interp1d
-
-import os
-import glob
-import gzip
-
-
-
-###################################################################################################
-# Utils for pyqsofit
-
-def make_qsopar(path, ngauss_hb_br=2, fname='qsopar.fits', OIIItype='c'):
-
-    """
-    Create parameter file
-    lambda    complexname  minwav maxwav linename ngauss inisca minsca maxsca inisig minsig maxsig voff vindex windex findex fvalue vary
-    """
-
-    recs = [(6564.61, r'H$\alpha$', 6400, 6800, 'Ha_br',   3, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.015, 0, 0, 0, 0.05 , 1),
-    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_na',   1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    (6549.85, r'H$\alpha$', 6400, 6800, 'NII6549', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 1, 0.001, 1),
-    (6585.28, r'H$\alpha$', 6400, 6800, 'NII6585', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 1, 0.003, 1),
-    (6718.29, r'H$\alpha$', 6400, 6800, 'SII6718', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 2, 0.001, 1),
-    (6732.67, r'H$\alpha$', 6400, 6800, 'SII6732', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 2, 0.001, 1),
-
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_br',     ngauss_hb_br, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.01, 0, 0, 0, 0.01 , 1),
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_na',     1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1),
-    #(4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.005, 0, 0, 0, 0.001, 1),
-    #(4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_na', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.005, 1, 1, 0, 0.001, 1),
-
-    #(3934.78, 'CaII', 3900, 3960, 'CaII3934' , 2, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 99, 0, 0, -0.001, 1),
-
-    (3728.48, 'OII', 3650, 3800, 'OII3728', 1, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 1, 1, 0, 0.001, 1),
-        
-    #(3426.84, 'NeV', 3380, 3480, 'NeV3426',    1, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 0, 0, 0, 0.001, 1),
-    #(3426.84, 'NeV', 3380, 3480, 'NeV3426_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025,   0.02,   0.01, 0, 0, 0, 0.001, 1),
-
-    (2798.75, 'MgII', 2700, 2900, 'MgII_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05, 0.015, 0, 0, 0, 0.05, 1),
-    (2798.75, 'MgII', 2700, 2900, 'MgII_na', 2, 0.1, 0.0, 1e10, 1e-3, 5e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1),
-
-    (1908.73, 'CIII', 1700, 1970, 'CIII_br',   2, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05, 0.015, 99, 0, 0, 0.01, 1),
-    #(1908.73, 'CIII', 1700, 1970, 'CIII_na',   1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    #(1892.03, 'CIII', 1700, 1970, 'SiIII1892', 1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.003, 1, 1, 0, 0.005, 1),
-    #(1857.40, 'CIII', 1700, 1970, 'AlIII1857', 1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.003, 1, 1, 0, 0.005, 1),
-    #(1816.98, 'CIII', 1700, 1970, 'SiII1816',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.0002, 1),
-    #(1786.7,  'CIII', 1700, 1970, 'FeII1787',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.0002, 1),
-    #(1750.26, 'CIII', 1700, 1970, 'NIII1750',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.001, 1),
-    #(1718.55, 'CIII', 1700, 1900, 'NIV1718',   1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.001, 1),
-
-    (1549.06, 'CIV', 1500, 1700, 'CIV_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05,   0.015, 0, 0, 0, 0.05 , 1),
-    (1549.06, 'CIV', 1500, 1700, 'CIV_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    #(1640.42, 'CIV', 1500, 1700, 'HeII1640',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
-    #(1663.48, 'CIV', 1500, 1700, 'OIII1663',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
-    #(1640.42, 'CIV', 1500, 1700, 'HeII1640_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
-    #(1663.48, 'CIV', 1500, 1700, 'OIII1663_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
-
-    #(1402.06, 'SiIV', 1290, 1450, 'SiIV_OIV1', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
-    #(1396.76, 'SiIV', 1290, 1450, 'SiIV_OIV2', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
-    #(1335.30, 'SiIV', 1290, 1450, 'CII1335',   1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015, 0.01,  1, 1, 0, 0.001, 1),
-    #(1304.35, 'SiIV', 1290, 1450, 'OI1304',    1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015, 0.01,  1, 1, 0, 0.001, 1),
-
-    (1215.67, 'Lya', 1150, 1290, 'Lya_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05,   0.02, 0, 0, 0, 0.05 , 1),
-    (1215.67, 'Lya', 1150, 1290, 'Lya_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01, 0, 0, 0, 0.002, 1)
-    ]
-
-    if OIIItype == 'c':
-        recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1) )
-        recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.004, 1) )
-    elif OIIItype == 'w':
-        recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.001, 1) )
-        recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.002, 1) )
-
-
-
-    newdata = np.rec.array( recs, 
-    formats = 'float32,      a20,  float32, float32,      a20,  int32, float32, float32, float32, float32, float32, float32, float32,   int32,  int32,  int32,   float32, int32',
-    names  =  ' lambda, compname,   minwav,  maxwav, linename, ngauss,  inisca,  minsca,  maxsca,  inisig,  minsig,  maxsig,  voff,     vindex, windex,  findex,  fvalue,  vary')
-
-
-    # Header
-    hdr = fits.Header()
-    hdr['lambda'] = 'Vacuum Wavelength in Ang'
-    hdr['minwav'] = 'Lower complex fitting wavelength range'
-    hdr['maxwav'] = 'Upper complex fitting wavelength range'
-    hdr['ngauss'] = 'Number of Gaussians for the line'
-
-    # Can be set to negative for absorption lines if you want
-    hdr['inisca'] = 'Initial guess of line scale [flux]'
-    hdr['minsca'] = 'Lower range of line scale [flux]'
-    hdr['maxsca'] = 'Upper range of line scale [flux]'
-
-    hdr['inisig'] = 'Initial guess of linesigma [lnlambda]'
-    hdr['minsig'] = 'Lower range of line sigma [lnlambda]'  
-    hdr['maxsig'] = 'Upper range of line sigma [lnlambda]'
-
-    hdr['voff  '] = 'Limits on velocity offset from the central wavelength [lnlambda]'
-    hdr['vindex'] = 'Entries w/ same NONZERO vindex constrained to have same velocity'
-    hdr['windex'] = 'Entries w/ same NONZERO windex constrained to have same width'
-    hdr['findex'] = 'Entries w/ same NONZERO findex have constrained flux ratios'
-    hdr['fvalue'] = 'Relative scale factor for entries w/ same findex'
-
-    hdr['vary'] = 'Whether or not to vary the line parameters (set to 0 to fix the line parameters to initial values)'
-
-    # Save line info
-    hdu = fits.BinTableHDU(data=newdata, header=hdr, name='data')
-    hdu.writeto(os.path.join(path, fname), overwrite=True)
-    
-    return hdr, newdata
-
-
-
-############################################################################################################
-#Get input for and output of PyQSOFit
-
-def get_spec_dat(rmid, spec_path, p0_path, summary_path, res_path=None, line_path=None):
-    
-    """Get the spectral data for a given object in the SDSSRM sample to be used for BRAINS. 
-    
-    Parameters
-    ----------
-    rmid : int
-        The RMID of the object to be fit.
-        
-    spec_path : str
-        The path to the directory containing the SDSSRM spectra.
-        
-    p0_path : str
-        The path to the directory containing the p0 files.
-        
-    summary_path : str
-        The path to the directory containing the summary.fits file.
-        
-    res_path : str, optional
-        The path to the directory containing the results of the PyQSOFit emission line fits. If ``None``, 
-        the files will not be read.
-        
-    line_path : str, optional
-        The path to the directory containing the line files. If ``None``, the files will not be read.
-    
-
-    Returns:
-    --------
-    spec_prop : astropy.table.Table
-        A table of properties for each spectrum for all epochs. This lists the MJD, redshift, epoch, as well as 
-        the filenames for the spectra and (optionally) the fit emission lines
-        
-    table_arr: list
-        A list of astropy.table.Table objects containing the spectral data for each epoch. The columns are
-        wavelength, flux, flux error, corrected flux (using p0), and corrected error.
-        
-    ra: float
-        The RA of the object.
-        
-    dec: float
-        The DEC of the object.
-    
-    
-    """
-    
-    spec_files = glob.glob(spec_path + 'RMID_{:03d}/*'.format(rmid) )
-    lnp0_dat = Table.read(p0_path + 'rm{:03}/rm{:03}_p0_t.dat'.format(rmid,rmid), format='ascii', names=['mjd', 'lnp0', 'err'] )
-
-    #Get RA and DEC
-    dat = Table.read(summary_path + 'summary.fits')  
-    ra = dat[rmid]['RA']
-    dec = dat[rmid]['DEC']
-    
-    
-    #Get header info
-    mjd_arr = np.zeros_like(spec_files, dtype=float)
-    z_arr = np.zeros_like(spec_files, dtype=float)
-    epoch_arr = np.zeros_like(spec_files, dtype=int)
-    plateid_arr = np.zeros_like(spec_files, dtype=int)
-    fiberid_arr = np.zeros_like(spec_files, dtype=int)
-
-    table_arr = []
-    for i in range(len(spec_files)):
-        
-        with gzip.open(spec_files[i], mode="rt") as f:
-            file_content = f.readlines()
-            mjd_arr[i] = float( file_content[0].split()[1].split('=')[1] )
-            z_arr[i] = float( file_content[2].split()[1].split('=')[1] )  
-            epoch_arr[i] = int( file_content[3][-3:] )
-            
-            plateid_arr[i] = int( file_content[4].split()[1].split('=')[1]  )
-            fiberid_arr[i] = int( file_content[4].split()[3].split('=')[1] )
-            
-            colnames = file_content[5].split()[1:]
-
-        
-        dat = Table.read(spec_files[i], format='ascii', names=colnames)
-        table_arr.append(dat) 
-    
-    
-    
-    #Sort by epoch
-    sort_ind = np.argsort(epoch_arr)
-    table_arr = np.array(table_arr, dtype=object)[sort_ind]
-    spec_files = np.array(spec_files)[sort_ind]
-
-    mjd_arr = mjd_arr[sort_ind]
-    z_arr = z_arr[sort_ind]
-    epoch_arr = epoch_arr[sort_ind]
-    plateid_arr = plateid_arr[sort_ind]
-    fiberid_arr = fiberid_arr[sort_ind]
-    
-    
-    #Get p0
-    lnp0_dat['p0'] = np.exp(lnp0_dat['lnp0'].tolist())
-    lnp0_dat['mjd'] = np.array(lnp0_dat['mjd']) + 50000
-    lnp0_dat['spec_mjd'] = mjd_arr
-    lnp0_dat.sort('mjd')
-    
-    
-    #Divide by p0(t)
-    for i in range(len(table_arr)):
-        table_arr[i]['corrected_flux'] = np.array(table_arr[i]['Flux']) / lnp0_dat['p0'][i]
-        table_arr[i]['corrected_err'] = np.array(table_arr[i]['Flux_Err']) / lnp0_dat['p0'][i]
-
-
-    #Make an array for the properties of each spectrum
-    spec_prop = Table([mjd_arr, epoch_arr, z_arr, plateid_arr, fiberid_arr, np.array(lnp0_dat['p0']), spec_files], 
-                      names=['mjd', 'epoch', 'z', 'plateid', 'fiberid', 'p0', 'filename'])
-
-    spec_prop.sort('mjd')
-    
-    
-    
-    if (res_path is not None) or (line_path is not None):
-        fit_files, Hb_files, oIII_files, Ha_files, Mg2_files, cont_files, _ = get_fit_res(res_path, line_path, rmid)
-        spec_prop['fit_file'] = fit_files
-        spec_prop['Hb_file'] = Hb_files
-        spec_prop['oIII_file'] = oIII_files
-        spec_prop['Ha_file'] = Ha_files
-        spec_prop['Mg2_file'] = Mg2_files
-        spec_prop['cont_file'] = cont_files
-    
-    return spec_prop, table_arr, ra, dec
-
-
-
-
-# Get the results of the pyQSOFit emission line fits (need to copy them from the original directory)
-def get_fit_res(res_path, line_path, rmid):
-    
-    epoch_dirs = glob.glob(res_path + 'rm{:03d}/*/'.format(rmid) )
-    epochs = np.array([ int(d[-4:-1]) for d in epoch_dirs ])
-        
-    fit_files = []
-    oIII_files = []
-    cont_files = []
-    for d in epoch_dirs:
-        fit_files.append( glob.glob(d + '*.fits')[0] )
-        oIII_files.append( glob.glob(d + 'OIII*')[0] )
-        cont_files.append( glob.glob( d + 'continuum*' )[0] )
-
-
-    #Sort by epoch
-    sort_ind = np.argsort(epochs)
-    epochs = epochs[sort_ind]
-    fit_files = np.array(fit_files)[sort_ind]
-    oIII_files = np.array(oIII_files)[sort_ind]
-    cont_files = np.array(cont_files)[sort_ind]
-    
-    
-    
-    
-    Hb_files = glob.glob(line_path + 'rm{:03d}/hb/*.csv'.format(rmid) )
-    Ha_files = glob.glob(line_path + 'rm{:03d}/ha/*.csv'.format(rmid) )
-    Mg2_files = glob.glob(line_path + 'rm{:03d}/mg2/*.csv'.format(rmid) )
-    epochs2 = np.array([ int(d[-4:-1]) for d in epoch_dirs ])
-    
-    #Sort by epoch
-    sort_ind = np.argsort(epochs2)
-    epochs2 = epochs2[sort_ind]
-    Hb_files = np.array(Hb_files)[sort_ind]
-    Ha_files = np.array(Ha_files)[sort_ind]
-    Mg2_files = np.array(Mg2_files)[sort_ind]
-    
-    assert np.all(epochs == epochs2)
-    
-    return fit_files, Hb_files, oIII_files, Ha_files, Mg2_files, cont_files, epochs
-        
-
 
 ############################################################################################################
 #Get input for BRAINS
@@ -327,7 +41,9 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
 
 
-def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5e-2):
+def make_input_file(fnames, central_wl, times, z, output_fname, 
+                    time_bounds=None, wl_bounds=None, 
+                    nbin=None, tol=5e-2):
     
     #Wavelength is assumed to be in rest frame
     #Wavelength bins for each time are assumed not to be the same
@@ -363,6 +79,12 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
     output_fname : string
         Filename for the output file
         
+    time_bounds: list of floats, optional
+        List of the bounds of the time bins. If not specified, will use the first and last times in the list of times
+        
+    wl_bounds : list of floats, optional
+        List of the bounds of the wavelength bins. If not specified, will use the first and last wavelengths in the list of wavelengths
+        
     nbin : int, optional
         Number of wavelength bins to use. If not specified, will use the number of bins in the longest (i.e., most resolved) spectrum
     
@@ -375,13 +97,30 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
     None
     
     """
-    
+
     wl_tot = []
     prof_tot = []
     err_tot = []
     bounds = get_prof_bounds(fnames, central_wl, tol=tol)
+    
+    if wl_bounds is not None:
+        if wl_bounds[0] > bounds[0]:
+            bounds[0] = wl_bounds[0]
+        if wl_bounds[1] < bounds[1]:
+            bounds[1] = wl_bounds[1]
+    
+
+    if time_bounds is not None:
+        time_mask = (times > time_bounds[0]) & (times < time_bounds[1])
+    else:
+        time_mask = ~np.zeros(len(times), dtype=bool)
+
+
 
     for i in range(len(fnames)):
+        if not time_mask[i]:
+            continue
+
         hb_dat = Table.read(fnames[i], format='ascii.csv')
         
         wl_rest = hb_dat['wavelength']
@@ -404,6 +143,8 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
         wl_tot[i] = np.array(wl_tot[i]) * (1 + z)
 
 
+    #Truncate time array if needed
+    times = np.array(times)[time_mask]
 
     ####################################################
     #Need to rebin to a common wavelength grid
@@ -585,46 +326,6 @@ def make_input_file(fnames, central_wl, times, z, output_fname, nbin=None, tol=5
             err_tot_rebin[i,left_ind+1:right_ind] = np.sqrt( (err_tot_rebin[i,left_ind] + err_tot_rebin[i,right_ind])**2 /4 + np.var(prof_tot_rebin[i,left_ind+1:right_ind]) )
             
             j += n_interp
-
-
-
-
-    # #Linearly interpolate between points for wl bins with no data
-    # for i in range(len(wl_tot_rebin)):
-    #     nan_ind = np.argwhere( np.isnan(prof_tot_rebin[i,:]) )
-        
-    #     if len(nan_ind) == 0:
-    #         continue
-        
-    #     nfit = 5
-        
-    #     nan_ind = nan_ind.T[0]
-    #     n = 0
-    #     while n < len(nan_ind):
-    #         n_interp = 1
-    #         ind_lo = nan_ind[n] - 1
-
-    #         m = nan_ind[n] + 1
-    #         while m in nan_ind:
-    #             n_interp += 1
-    #             m += 1 
-
-    #         ind_hi = m
-
-
-    #         xfit = wl_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
-    #         yfit = prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]
-
-    #         nan_mask = np.isnan(yfit)
-    #         xfit = xfit[~nan_mask]
-    #         yfit = yfit[~nan_mask]
-
-    #         p = np.polyfit( xfit, yfit, 1)
-    #         for j in range(1, n_interp+1):
-    #             prof_tot_rebin[i, ind_lo+j] = np.polyval(p, wl_tot_rebin[i, ind_lo+j])
-    #             err_tot_rebin[i, ind_lo+j] = np.sqrt( np.nanvar(prof_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]) + np.nansum( err_tot_rebin[i, ind_lo-nfit:ind_hi+nfit]**2 ) )
-
-    #         n += n_interp
 
 
     #Make sure there are no NaNs left
