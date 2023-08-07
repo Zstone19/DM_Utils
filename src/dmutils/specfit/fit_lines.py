@@ -269,7 +269,7 @@ def check_bad_run(qi, line_name):
 def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', host_dir=None):
     print('Fitting epoch {}'.format(ind+1))
 
-    if line_name != 'mg2':
+    if line_name not in ['mg2', 'c4']:
         assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'
 
 
