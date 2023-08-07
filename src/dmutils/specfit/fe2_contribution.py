@@ -519,9 +519,9 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     elif all is False:
         indices = np.argwhere(bad_mask).T[0]
         print('Epochs to refit: ', indices+1)
-    elif len(indices) == 0:
+    elif np.all(~bad_mask):
         print('No epochs to refit')
-        return np.zeros(nepoch, dtype=bool)
+        return bad_mask
     else:
         indices = np.array(all)
         print('Epochs to refit: ', indices+1)
