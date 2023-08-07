@@ -10,6 +10,8 @@ def move_line_profs(main_dir, rmid, line_name):
         line_in = 'Hb_br'
     elif line_name == 'mg2':
         line_in = 'MgII_br'
+    elif line_name == 'c4':
+        line_in = 'CIV_br'
     
     
     rm_dir = main_dir + '/rm{:03d}/'.format(rmid)

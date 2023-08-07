@@ -147,6 +147,8 @@ class Object:
             central_wl = 4862.721
         elif line_name == 'mg2':
             central_wl = 2798.75
+        elif line_name == 'c4':
+            central_wl = 1550
 
 
         fnames = self.res_fnames[line_name]

@@ -19,7 +19,7 @@ def save_feii_params(qi_arr, output_dir, line_name):
 
     epochs = np.array( range(len(qi_arr)) ) + 1
     
-    if line_name == 'mg2':
+    if line_name in ['mg2', 'c4']:
         tot_params = np.zeros( (len(epochs), 3*2) )
 
         for i in range(len(epochs)):
@@ -64,7 +64,7 @@ def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, 
     
     epochs = indices + 1
     
-    if line_name == 'mg2':
+    if line_name in ['mg2', 'c4']:
         tot_params = np.zeros( (len(epochs), 3*2) )
 
         for i in range(len(epochs)):
@@ -134,6 +134,8 @@ def save_feii_fluxes(wl_fe, fe2_fluxes, cont_fluxes, output_dir, line_name):
     
     if line_name == 'mg2':
         colname = 'FeII_MgII'
+    elif line_name == 'c4':
+        colname = 'FeII_CIV'
     elif line_name == 'hb':
         colname = 'FeII_Hbeta'
     elif line_name == 'ha':
@@ -155,6 +157,11 @@ def check_rerun(qi, line_name):
 
     if line_name == 'mg2':
         c = np.argwhere( qi.uniq_linecomp_sort == 'MgII' ).T[0][0]
+        chi2_nu1 = float(qi.comp_result[c*7+4])
+        
+        rerun = chi2_nu1 > 3
+    elif line_name == 'c4':
+        c = np.argwhere( qi.uniq_linecomp_sort == 'CIV' ).T[0][0]
         chi2_nu1 = float(qi.comp_result[c*7+4])
         
         rerun = chi2_nu1 > 3
@@ -190,7 +197,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
              Fe_op_params=None, Fe_op_range=None):
 
     print('Fitting FeII-{} contribution for epoch {:03d}'.format(line_name, ind+1))
-    assert line_name in ['mg2', 'hb', 'ha']
+    assert line_name in ['mg2', 'c4', 'hb', 'ha']
     
     lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
     flux = np.array(obj.table_arr[ind]['corrected_flux'])
@@ -210,6 +217,13 @@ def host_job(ind, obj, qsopar_dir, line_name,
         wave_range = np.array([2200, 3090])
         if mask_line:
             wave_mask = np.array([[2675, 2925]])
+        else:
+            wave_mask = None
+            
+    elif line_name == 'c4':
+        wave_range = np.array([1445, 1705])
+        if mask_line:
+            wave_mask = np.array([[1465, 1700]])
         else:
             wave_mask = None
 
@@ -322,6 +336,8 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
     
     if line_name == 'mg2':
         wl_fe = np.linspace(2200, 3090, 3000)
+    elif line_name == 'c4':
+        wl_fe = np.linspace(1445, 1705, 3000)
     elif line_name == 'hb':
         wl_fe = np.linspace(4435, 5535, 3000)
     elif line_name == 'ha':
@@ -334,7 +350,7 @@ def get_feii_flux(obj, indices, qsopar_dir, nburn, nsamp, nthin,
         pp_tot = qi_arr[i].conti_result[7::2].astype(float)
         
         
-        if line_name == 'mg2':
+        if line_name in ['mg2', 'c4']:
             feii_arrs.append( qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3] ) )
         elif line_name in ['hb', 'ha']:
             feii_mgii = qi_arr[i].Fe_flux_mgii(wl_fe, pp_tot[:3])
@@ -360,6 +376,8 @@ def resave_feii_fluxes(indices, wl_fe, fe2_fluxes, cont_fluxes, output_dir, line
     
     if line_name == 'mg2':
         colname = 'FeII_MgII'
+    elif line_name == 'c4':
+        colname = 'FeII_CIV'
     elif line_name == 'hb':
         colname = 'FeII_Hbeta'
     elif line_name == 'ha':
@@ -395,6 +413,8 @@ def find_bad_fits(fit_fnames, param_fname, line_name, method='prof', nsig=3):
     
     if line_name == 'mg2':
         colname = 'FeII_MgII'
+    elif line_name == 'c4':
+        colname = 'FeII_CIV'
     elif line_name == 'hb':
         colname = 'FeII_Hbeta'
     elif line_name == 'ha':
@@ -447,7 +467,7 @@ def find_bad_fits(fit_fnames, param_fname, line_name, method='prof', nsig=3):
     param_dat = Table.read(param_fname, format='ascii')
     assert len(param_dat) == nepoch
     
-    if line_name == 'mg2':
+    if line_name in ['mg2', 'c4']:
         cols = ['Norm', 'FWHM', 'Shift']
     elif line_name in ['ha', 'hb']:
         cols = ['Norm_uv', 'FWHM_uv', 'Shift_uv', 'Norm_op', 'FWHM_op', 'Shift_op']
@@ -504,7 +524,7 @@ def refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     
     param_dat = Table.read(fit_dir + 'best_fit_params.dat', format='ascii')
     
-    if line_name == 'mg2':
+    if line_name in ['mg2', 'c4']:
         colnames = ['Norm', 'FWHM', 'Shift']
         vals = np.zeros( (3, len(colnames)) )
 
@@ -635,7 +655,7 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     if all is True:
         niter = 2
         
-        if line_name == 'mg2':
+        if line_name in ['mg2', 'c4']:
             if fix == ['fwhm']:
                 fix_arr = [['shift', 'fwhm']] 
                 fix_arr = [fix]    
@@ -702,7 +722,7 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
     if len(bad_indices) > 0:
         print('Fixing epochs:', np.array(bad_indices)+1)
         
-        if line_name == 'mg2':
+        if line_name in ['mg2', 'c4']:
             refit_bad_epochs(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name, host_dir=host_dir,
                             fix=['norm', 'fwhm', 'shift'], 
                             ranges=ranges, all=bad_indices, method=method, nsig=1,
@@ -736,6 +756,8 @@ def interpolate_fe2_flux(rest_wl, ref_flux_fname, line_name, cont=False):
     
     if line_name == 'mg2':
         colname = 'FeII_MgII'
+    elif line_name == 'c4':
+        colname = 'FeII_CIV'
     elif line_name == 'hb':
         colname = 'FeII_Hbeta'
     elif line_name == 'ha':

@@ -23,6 +23,12 @@ def check_rerun(qi, line_name):
         
         rerun = chi2_nu1 > 3
         
+    elif line_name == 'c4':
+        c = np.argwhere( qi.uniq_linecomp_sort == 'CIV' ).T[0][0]
+        chi2_nu1 = float(qi.comp_result[c*7+4])
+        
+        rerun = chi2_nu1 > 3
+        
     elif line_name == 'hb':
         c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
         chi2_nu1 = float(qi.comp_result[c*7+4])
@@ -46,6 +52,13 @@ def check_rerun(qi, line_name):
         
         rerun1 = chi2_nu1 > 3
         
+
+
+        c = np.argwhere( qi.uniq_linecomp_sort == 'CIV' ).T[0][0]
+        chi2_nu1 = float(qi.comp_result[c*7+4])
+        
+        rerun2 = chi2_nu1 > 3
+
         
         
         c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\beta$' ).T[0][0]
@@ -55,17 +68,17 @@ def check_rerun(qi, line_name):
         oiii_mask = (names == 'OIII4959c_1_scale')
         oiii_scale = float(qi.line_result[oiii_mask])
 
-        rerun2 = (chi2_nu1 > 3) | (oiii_scale < 1) 
+        rerun3 = (chi2_nu1 > 3) | (oiii_scale < 1) 
         
         
         
         c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\alpha$' ).T[0][0]
         chi2_nu1 = float(qi.comp_result[c*7+4])
         
-        rerun3 = chi2_nu1 > 3
+        rerun4 = chi2_nu1 > 3
         
         
-        rerun = rerun1 | rerun2 | rerun3
+        rerun = rerun1 | rerun2 | rerun3 | rerun4
         
         
     return rerun
@@ -102,6 +115,10 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
     if line_name == 'mg2':
         poly = False
         wave_range = np.array([2200, 3090])
+        
+    elif line_name == 'c4':
+        poly = False
+        wave_range = np.array([1445, 1705])
 
     elif line_name == 'hb':
         poly = False
@@ -245,6 +262,8 @@ def get_best_host_flux(obj, output_dir, line_name=None):
         bounds = [4435, 5535]
     elif line_name == 'mg2':
         bounds = [2200, 3090]
+    elif line_name == 'c4':
+        bounds = [1445, 1705]
     elif line_name is None:
         bounds = [0, np.inf]
     

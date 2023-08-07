@@ -140,6 +140,8 @@ def find_optimal_ngauss(lam, flux, err, z, ra, dec, mjd, fitpath,
         line_str = 'Hb_br'
     elif line_name == 'mg2':
         line_str = 'MgII_br'
+    elif line_name == 'c4':
+        line_str = 'CIV_br'
     
     
     bic_last = np.inf
@@ -203,12 +205,16 @@ def check_bad_run(qi, line_name):
         c = np.argwhere( qi.uniq_linecomp_sort == 'MgII' ).T[0][0]
         chi2_nu2 = float(qi.comp_result[c*7+4])
         
+        #Get chi2 of CIV
+        c = np.argwhere( qi.uniq_linecomp_sort == 'CIV' ).T[0][0]
+        chi2_nu3 = float(qi.comp_result[c*7+4])
+        
         #Get chi2 of Halpha
         c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\alpha$' ).T[0][0]
-        chi2_nu3 = float(qi.comp_result[c*7+4])        
+        chi2_nu4 = float(qi.comp_result[c*7+4])        
         
         
-        if (chi2_nu1 > 3) or (chi2_nu2 > 3) or (oiii_scale < 1) or (chi2_nu3 > 3):
+        if (chi2_nu1 > 3) or (chi2_nu2 > 3) or (oiii_scale < 1) or (chi2_nu3 > 3) or (chi2_nu4 > 3):
             rerun = True
 
 
@@ -233,13 +239,21 @@ def check_bad_run(qi, line_name):
         
         if chi2_nu2 > 3:
             rerun = True
+            
+    elif line_name == 'c4':
+        #Get chi2 of CIV
+        c = np.argwhere( qi.uniq_linecomp_sort == 'CIV' ).T[0][0]
+        chi2_nu3 = float(qi.comp_result[c*7+4])
+        
+        if chi2_nu3 > 3:
+            rerun = True
         
 
     elif line_name == 'ha':
         c = np.argwhere( qi.uniq_linecomp_sort == 'H$\\alpha$' ).T[0][0]
-        chi2_nu3 = float(qi.comp_result[c*7+4])
+        chi2_nu4 = float(qi.comp_result[c*7+4])
         
-        if chi2_nu3 > 3:
+        if chi2_nu4 > 3:
             rerun = True
 
     return rerun
@@ -279,6 +293,9 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     elif line_name == 'mg2':
         wave_range = np.array([2200, 3090])
         decompose_host = False
+    elif line_name == 'c4':
+        wave_range = np.array([1445, 1705])
+        decompose_host = False
     elif line_name == 'hb':
         wave_range = np.array([4435, 5535])
     elif line_name == 'ha':
@@ -286,7 +303,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
 
     
     
-    if line_name == 'mg2':
+    if line_name in ['mg2', 'c4']:
         fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
         fe_op_params = None
     else:
@@ -517,6 +534,41 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None):
         colnames = ['wavelength', 'profile', 'err_lo', 'err_hi']            
         profile_info = Table( [qi.wave, prof_med, prof_err_lo, prof_err_hi], names=colnames)
         profile_info.write( epoch_dir + 'MgII_br_profile.csv', overwrite=True )
+
+
+    ####################################################################
+    ####################################################################
+    # CIV
+    
+    if (line_name is None) or (line_name == 'c4'):
+        #Get MgII broad profiles (need to load all MCMC samples)
+        pvals = []
+        for p in range( len(gauss_result)//3 ):
+            if (gauss_names[3*p + 2][:4] != 'c4') or (gauss_names[3*p + 2][5:7] != 'br'):
+                continue
+            
+            pvals.append(p)
+
+
+        profiles = []
+        for i in range(gauss_result_tot.shape[0]):
+
+            profile = np.zeros_like( qi.wave )
+            for p in pvals:
+                profile += qi.Onegauss( np.log(qi.wave), gauss_result_tot[i, 3*p:3*(p+1)] )
+        
+            profiles.append(profile)
+        
+        
+        profiles = np.vstack(profiles)
+
+        prof_med = np.median(profiles, axis=0)
+        prof_err_lo = prof_med - np.percentile(profiles, 16, axis=0)
+        prof_err_hi = np.percentile(profiles, 84, axis=0) - prof_med
+
+        colnames = ['wavelength', 'profile', 'err_lo', 'err_hi']            
+        profile_info = Table( [qi.wave, prof_med, prof_err_lo, prof_err_hi], names=colnames)
+        profile_info.write( epoch_dir + 'CIV_br_profile.csv', overwrite=True )
     
     
     ####################################################################
