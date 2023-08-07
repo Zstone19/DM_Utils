@@ -589,11 +589,11 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None):
 
 def run_all_fits(rmid, line_name, main_dir, prefix='', host=True, ncpu=None):
     
-    fe2_dir = main_dir + 'rm{:03d}/' + line_name + '/fe2/'
-    res_dir = main_dir + 'rm{:03d}/' + line_name + '/qsofit/'
+    fe2_dir = main_dir + 'rm{:03d}/'.format(rmid) + line_name + '/fe2/'
+    res_dir = main_dir + 'rm{:03d}/'.format(rmid) + line_name + '/qsofit/'
     
     if host:
-        host_dir = main_dir + 'rm{:03d}/host_flux/'
+        host_dir = main_dir + 'rm{:03d}/host_flux/'.format(rmid)
     else:
         host_dir = None
     
