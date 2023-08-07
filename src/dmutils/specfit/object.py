@@ -94,7 +94,7 @@ class Object:
 
 
     def get_fe2_params(self, line_name):
-        self.fe2_params = Table.read( self.main_dir + '/' + line_name '/fe2/best_fit_params.dat', format='ascii' )
+        self.fe2_params = Table.read( self.main_dir + '/' + line_name + '/fe2/best_fit_params.dat', format='ascii' )
         return
 
 
