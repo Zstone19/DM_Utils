@@ -16,7 +16,7 @@ class Object:
 
         self.raw_spec_dir = self.main_dir + 'raw_spec/'
         self.p0_filename = self.main_dir + 'p0t.dat'
-        self.summary_filename = self.main_dir + 'summary.fits'
+        self.summary_filename = self.main_dir[:-6] + 'summary.fits'
 
 
 
