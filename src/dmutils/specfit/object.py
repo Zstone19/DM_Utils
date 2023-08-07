@@ -25,8 +25,8 @@ class Object:
         
         #Get RA and DEC
         dat = Table.read(self.summary_filename)
-        self.ra = dat[rmid-1]['RA']
-        self.dec = dat[rmid-1]['DEC']
+        self.ra = dat[rmid]['RA']
+        self.dec = dat[rmid]['DEC']
         del dat
             
         #Get filenames for raw spectra
