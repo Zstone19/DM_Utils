@@ -12,24 +12,21 @@ class Object:
     def __init__(self, rmid):
         
         self.rmid = int(rmid)
+        self.main_dir = '/data3/stone28/2drm/sdssrm/rm{:03d}/'.format(rmid)
 
-        dat_dir = '/data3/stone28/2drm/sdssrm/spec/'
-        p0_dir = '/data2/yshen/sdssrm/public/prepspec/'
-        summary_dir = '/data2/yshen/sdssrm/public/'
+        self.raw_spec_dir = self.main_dir + 'raw_spec/'
+        self.p0_filename = self.main_dir + 'p0t.dat'
+        self.summary_filename = self.main_dir + 'summary.fits'
 
-        self.raw_spec_dir = dat_dir + 'RMID_{:03d}/'.format(rmid)
-        self.p0_filename = p0_dir + 'rm{:03d}/rm{:03d}_p0_t.dat'.format(rmid, rmid)
-        self.summary_filename = summary_dir + 'summary.fits'
-        
-        
-        
+
+
         #Get p0 data
         self.lnp0_dat = Table.read(self.p0_filename, format='ascii', names=['mjd', 'lnp0', 'err'] )
         
         #Get RA and DEC
         dat = Table.read(self.summary_filename)
-        self.ra = dat[rmid]['RA']
-        self.dec = dat[rmid]['DEC']
+        self.ra = dat[rmid-1]['RA']
+        self.dec = dat[rmid-1]['DEC']
         del dat
             
         #Get filenames for raw spectra
@@ -93,14 +90,17 @@ class Object:
             self.table_arr[i]['corrected_flux'] = np.array(self.table_arr[i]['Flux']) / self.lnp0_dat['p0'][i]
             self.table_arr[i]['corrected_err'] = np.array(self.table_arr[i]['Flux_Err']) / self.lnp0_dat['p0'][i]
 
+        self.res_fnames = {}
 
-    def get_fe2_params(self, path):
-        self.fe2_params = Table.read( path + 'best_fit_params.dat', format='ascii' )
+
+    def get_fe2_params(self, line_name):
+        self.fe2_params = Table.read( self.main_dir + '/' + line_name '/fe2/best_fit_params.dat', format='ascii' )
         return
 
 
-    def get_fit_res(self, res_path):
+    def get_fit_res(self, line_name):
         
+        res_path = self.main_dir + '/' + line_name + '/qsofit/'        
         epoch_dirs = glob.glob(res_path + 'rm{:03d}/*/'.format(self.rmid) )
         epochs = np.array([ int(d[-4:-1]) for d in epoch_dirs ])
         
@@ -123,45 +123,14 @@ class Object:
 
 
 
-    def get_line_profile_fits(self, line_path):
+    def get_line_profile_fits(self, line_name):
         
-        #See what lines were fit
-        fit_dirs = glob.glob(line_path + 'rm{:03d}/*/'.format(self.rmid) )
-        fit_dirs = [ os.path.basename(d) for d in fit_dirs ]
-                
-                
-        ha = False
-        hb = False
-        mg2 = False
-        if 'ha' in os.path.basename(fit_dirs):
-            ha = True
-        if 'hb' in os.path.basename(fit_dirs):
-            hb = True
-        if 'mg2' in os.path.basename(fit_dirs):
-            mg2 = True
+        line_path = self.main_dir + '/' + line_name + '/profile/'
+        fnames = glob.glob(line_path + '*')
+        epochs = [ int(x.split('.')[0][-3:]) for x in fnames ]
         
-
-        if ha:
-            Ha_files = glob.glob(line_path + 'rm{:03d}/ha/*.csv'.format(self.rmid) )
-            epochs = [ int(d[-7:-4]) for d in Ha_files ]
-            
-        if hb: 
-            Hb_files = glob.glob(line_path + 'rm{:03d}/hb/*.csv'.format(self.rmid) )
-            epochs = [ int(d[-7:-4]) for d in Hb_files ]
-            
-        if mg2:
-            Mg2_files = glob.glob(line_path + 'rm{:03d}/mg2/*.csv'.format(self.rmid) )
-            epochs = [ int(d[-7:-4]) for d in Mg2_files ]
-                
-        #Sort by epoch
         sort_ind = np.argsort(epochs)
-
-        if ha:
-            self.ha_files = np.array(Ha_files)[sort_ind]
-        if hb:
-            self.hb_files = np.array(Hb_files)[sort_ind]
-        if mg2:
-            self.mg2_files = np.array(Mg2_files)[sort_ind]
+        self.res_fnames[line_name] = np.array(fnames)[sort_ind]
         
         return
 
@@ -174,14 +143,13 @@ class Object:
         
         if line_name == 'ha':
             central_wl = 6564.61
-            fnames = self.ha_files
         elif line_name == 'hb':
             central_wl = 4862.721
-            fnames = self.hb_files
         elif line_name == 'mg2':
             central_wl = 2798.75
-            fnames = self.mg2_files
-            
+
+
+        fnames = self.res_fnames[line_name]
             
         utils.make_input_file(fnames, central_wl, self.mjd, self.z, output_fname, nbin=nbin, tol=tol)
         self.line2d_filename = output_fname

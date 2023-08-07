@@ -535,17 +535,19 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None):
 ###############################################################################################
 
 
-def run_all_fits(rmid, line_name, fe2_dir, res_dir, prefix='', host_dir=None, ncpu=None):
-        
-    fe2_dir += 'rm{:03d}/'.format(rmid)
-    res_dir += 'rm{:03d}/'.format(rmid)
+def run_all_fits(rmid, line_name, main_dir, prefix='', host=True, ncpu=None):
     
-    if host_dir is not None:
-        host_dir += 'rm{:03d}/'.format(rmid)
+    fe2_dir = main_dir + 'rm{:03d}/' + line_name + '/fe2/'
+    res_dir = main_dir + 'rm{:03d}/' + line_name + '/qsofit/'
+    
+    if host:
+        host_dir = main_dir + 'rm{:03d}/host_flux/'
+    else:
+        host_dir = None
     
     #Load data
     obj = Object(rmid)
-    obj.get_fe2_params(fe2_dir)
+    obj.get_fe2_params(line_name)
 
     #Make qsopar file
     header, newdata = make_qsopar(res_dir, oiii_wings=True)

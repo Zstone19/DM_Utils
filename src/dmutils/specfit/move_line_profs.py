@@ -1,29 +1,31 @@
 import glob
-import numpy as np
-
 import shutil
 
 
-def move_line_profs(res_dir, out_dir, lines_in, lines_out):
-    epoch_dirs = glob.glob(res_dir + 'epoch*')
+def move_line_profs(main_dir, rmid, line_name):
+    
+    if line_name == 'ha':
+        line_in = 'Ha_br'
+    elif line_name == 'hb':
+        line_in = 'Hb_br'
+    elif line_name == 'mg2':
+        line_in = 'MgII_br'
+    
+    
+    rm_dir = main_dir + '/rm{:03d}/'.format(rmid)
+    
+    epoch_dirs = glob.glob(rm_dir + line_name + '/epoch*')
     epochs = [ int(d[-3:]) for d in epoch_dirs ]
-
-    for i, epoch in enumerate(epochs):
-        for j in range(len(lines_in)):
-            
-            in_file = epoch_dirs[i] + r'/' + lines_in[j] + '_profile.csv'
-            out_file = out_dir + lines_out[j] + '/' + 'epoch{:03d}.csv'.format(epoch)
+    
+    for i in range(len(epochs)):
+        in_file = epoch_dirs[i] + r'/' + line_in + '_profile.csv'
+        out_file = rm_dir + line_name + '/profile/epoch{:03d}.csv'.format(epochs[i])
         
-            shutil.copyfile(in_file, out_file)
-            
+        shutil.copyfile(in_file, out_file)
+        
+        
     return
 
 
 if __name__ == '__main__':
-    res_dir = '/data3/stone28/2drm/sdssrm/fit_res_mg2/rm160/'
-    out_dir = '/data3/stone28/2drm/sdssrm/line_profs2/rm160/'
-
-    lines_in = ['MgII_br']
-    lines_out = ['mg2']
-
-    move_line_profs(res_dir, out_dir, lines_in, lines_out)
+    move_line_profs('/data3/stone28/2drm/sdssrm/', 160, 'mg2')

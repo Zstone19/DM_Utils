@@ -236,7 +236,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
 
     if line_name in ['ha', 'hb']:
         flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
-                                                            host_dir + 'rm{:03d}/best_host_flux.dat'.format(obj.rmid), 
+                                                            host_dir + 'best_host_flux.dat', 
                                                             z=obj.z)
 
 
