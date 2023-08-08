@@ -254,7 +254,7 @@ def save_host_fluxes(wl_arrs, host_fluxes, output_dir):
     return
 
 
-def get_best_host_flux(obj, output_dir, line_name=None):
+def get_best_host_flux(obj, output_dir, line_name=None, method='snr'):
     
     if line_name == 'ha':
         bounds = [6100, 7000]
@@ -267,24 +267,81 @@ def get_best_host_flux(obj, output_dir, line_name=None):
     elif line_name is None:
         bounds = [0, np.inf]
     
-    snr = []
-    for i in range(obj.nepoch):
-        dat = obj.table_arr[i].copy()
     
-        mask = (dat['Wave[vaccum]']/(1+obj.z) > bounds[0]) & (dat['Wave[vaccum]']/(1+obj.z) < bounds[1])
-        snr_i = dat['corrected_flux'][mask]/dat['corrected_err'][mask]
+    
+    if method == 'snr':
+        snr = []
+        for i in range(obj.nepoch):
+            dat = obj.table_arr[i].copy()
         
-        snr.append(np.median(snr_i))
+            mask = (dat['Wave[vaccum]']/(1+obj.z) > bounds[0]) & (dat['Wave[vaccum]']/(1+obj.z) < bounds[1])
+            snr_i = dat['corrected_flux'][mask]/dat['corrected_err'][mask]
+            
+            snr.append(np.median(snr_i))
 
 
-    best_epoch = np.argmax(snr)+1
+        best_epoch = np.argmax(snr)+1
+        
+        
+        #Resave the best SNR host flux
+        best_dat = Table.read(output_dir + 'host_flux_epoch{:03d}.dat'.format(best_epoch), format='ascii')
+        best_dat.write(output_dir + 'best_host_flux.dat', format='ascii', overwrite=True)
+        
+        return best_epoch, snr
     
     
-    #Resave the best SNR host flux
-    best_dat = Table.read(output_dir + 'host_flux_epoch{:03d}.dat'.format(best_epoch), format='ascii')
-    best_dat.write(output_dir + 'best_host_flux.dat', format='ascii', overwrite=True)
     
-    return best_epoch, snr
+    elif method == 'median':
+        
+        wl_arr = []
+        flux_arr = []
+        wl_min_arr = []
+        wl_max_arr = []
+
+        #Get all host 
+        for epoch in np.array(range(90))+1:
+            wl, flux = np.loadtxt(output_dir + 'host_flux_epoch{:03d}.dat'.format(epoch), unpack=True, skiprows=1)
+            
+            wl_arr.append(wl)
+            flux_arr.append(flux)
+
+            good_ind = np.argwhere( flux > 0 ).T
+            if len(good_ind[0]) == 0:
+                continue
+            
+            good_ind = good_ind[0]
+            wl_min_arr.append( wl[good_ind[0]] )
+            wl_max_arr.append( wl[good_ind[-1]] )
+            
+    wl_min =  np.max(wl_min_arr)
+    wl_max =  np.min(wl_max_arr)
+    
+    bounds[0] = np.max([bounds[0], wl_min])
+    bounds[1] = np.min([bounds[1], wl_max])
+    
+    wl_tot = np.linspace( bounds[0], bounds[1], 3000)
+    
+    wl_arr_fit = []
+    flux_arr_fit = []
+
+    for i in range(len(wl_arr)):
+        spl = splrep( wl_arr[i], flux_arr[i] )
+        newflux = splev( wl_tot, spl )
+        
+        wl_arr_fit.append(wl_tot)
+        flux_arr_fit.append(newflux)
+
+
+
+    best_flux = np.median(flux_arr_fit, axis=0)
+    flux_err_lo = best_flux - np.percentile(flux_arr_fit, 16, axis=0)
+    flux_err_hi = np.percentile(flux_arr_fit, 84, axis=0) - best_flux
+    
+    dat = Table([wl_tot, best_flux, flux_err_lo, flux_err_hi], names=['RestWavelength', 'HostFlux', 'ErrLo', 'ErrHi'])
+    dat.write(output_dir + 'best_host_flux.dat', format='ascii', overwrite=True)
+    
+    return wl_tot, best_flux
+
 
 
 #####################################################################################
