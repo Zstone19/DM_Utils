@@ -266,7 +266,7 @@ def check_bad_run(qi, line_name):
 ###############################################################################################
 
 
-def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', host_dir=None):
+def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', host_dir=None, rej_abs_line=False):
     print('Fitting epoch {}'.format(ind+1))
 
     if line_name not in ['mg2', 'c4']:
@@ -328,7 +328,6 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     nburn = 100
     nsamp = 200
     nthin = 10
-    rej_abs_line = False
     
 
     qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
@@ -392,11 +391,12 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
 
 
 #Job function (per epoch)
-def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None):
+def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_line=False):
 
     epoch = obj.epochs[ind]    
     epoch_dir = res_dir + 'epoch{:03d}/'.format(epoch)
-    qi = run_pyqsofit(obj, ind, epoch_dir, res_dir, line_name=line_name, prefix=prefix, host_dir=host_dir)
+    qi = run_pyqsofit(obj, ind, epoch_dir, res_dir, line_name=line_name, prefix=prefix, 
+                      host_dir=host_dir, rej_abs_line=rej_abs_line)
     
     #Get line fitting results
     gauss_result_tot = qi.gauss_result_all
@@ -587,7 +587,7 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None):
 ###############################################################################################
 
 
-def run_all_fits(rmid, line_name, main_dir, prefix='', host=True, ncpu=None):
+def run_all_fits(rmid, line_name, main_dir, prefix='', host=True, rej_abs_line=False, ncpu=None):
     
     fe2_dir = main_dir + 'rm{:03d}/'.format(rmid) + line_name + '/fe2/'
     res_dir = main_dir + 'rm{:03d}/'.format(rmid) + line_name + '/qsofit/'
@@ -623,7 +623,8 @@ def run_all_fits(rmid, line_name, main_dir, prefix='', host=True, ncpu=None):
         os.makedirs(dir_i, exist_ok=True)
         
     
-    specific_job = partial(job, obj=obj, res_dir=res_dir, line_name=line_name, prefix=prefix, host_dir=host_dir)
+    specific_job = partial(job, obj=obj, res_dir=res_dir, line_name=line_name, prefix=prefix, 
+                           host_dir=host_dir, rej_abs_line=rej_abs_line)
     if ncpu is None:
         ncpu = obj.nepoch
     
