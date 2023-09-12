@@ -101,7 +101,6 @@ def plot_mult(res_arr, res_names=None,
                         pass
                     else:
                         arrs[i] = [arrs[i]]*nres
-                        print(arrs[i])
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
