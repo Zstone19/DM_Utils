@@ -231,7 +231,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
         col_align_str += 'c|'
 
     custom_dict = {'tabletype': 'table*', 'preamble': r'\begin{center}', 'tablefoot': r'\end{center}', 
-                    'col_align': '|l|l|c|l|l|', 'header_start': r'\hline', 'header_end': r'\hline',
+                    'col_align': col_align_str, 'header_start': r'\hline', 'header_end': r'\hline',
                     'data_end': r'\hline'}
 
 
