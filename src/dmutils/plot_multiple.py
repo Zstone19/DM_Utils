@@ -87,20 +87,21 @@ def plot_mult(res_arr, res_names=None,
     if isinstance(tf_ymax_arr, float) or isinstance(tf_ymax_arr, int):
         tf_ymax_arr = [tf_ymax_arr]*nres
      
-    for arr in [bounds_arr, tf_xbounds_arr, cloud_cbar_range, tf_cbar_range]:
+    arrs = [bounds_arr, tf_xbounds_arr, cloud_cbar_range, tf_cbar_range]
+    for i in range(len(arrs)):
         
-        if len(arr) == 2:
-            if np.all(isnone(arr)):
+        if len(arrs[i]) == 2:
+            if np.all(isnone(arrs[i])):
                 pass
             else:
                 if nres != 2:
-                    arr = [arr]*nres
+                    arrs[i] = [arrs[i]]*nres
                 else:
-                    if isinstance(arr[0], list):
+                    if isinstance(arrs[i][0], list):
                         pass
                     else:
-                        arr = [arr]*nres
-                        print(arr)
+                        arrs[i] = [arrs[i]]*nres
+                        print(arrs[i])
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
@@ -114,8 +115,11 @@ def plot_mult(res_arr, res_names=None,
 
         
     
-    assert nres == len(res_names) == len(bounds_arr) == len(tf_ymax_arr) == len(tf_xbounds_arr)
+    assert nres == len(res_names) == len(tf_ymax_arr)
+    for arr in arrs:
+        assert nres == len(arr)
     
+
     fig = plt.figure(figsize=(15, 5*nres))
     gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.3, wspace=.2, width_ratios=[1, 1, 1])
     
@@ -127,12 +131,12 @@ def plot_mult(res_arr, res_names=None,
         ax_clouds = [ax1, ax2]
         ax_tf = fig.add_subplot(gs_tot[i,2])
 
-        ax_clouds = res.plot_clouds(colorbar=True, bounds=bounds_arr[i], ax=ax_clouds, 
-                                    vmin=cloud_cbar_range[i][0], vmax=cloud_cbar_range[i][1], 
+        ax_clouds = res.plot_clouds(colorbar=True, bounds=arrs[0][i], ax=ax_clouds, 
+                                    vmin=arrs[2][i][0], vmax=arrs[2][i][1], 
                                     show=False)
         
-        ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=tf_xbounds_arr[i], 
-                                             vmin=tf_cbar_range[i][0], vmax=tf_cbar_range[i][1],
+        ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
+                                             vmin=arrs[3][i][0], vmax=arrs[3][i][1],
                                              show=False)
     
         ytxt = 1 - (2*i + 1)/(2*nres)
