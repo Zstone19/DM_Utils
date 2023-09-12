@@ -208,7 +208,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
         for j, name in enumerate(res.bp.para_names['name']):
                         
             if name in names_tot:
-                name_ind = np.argwhere( names_tot == name )[0][0]
+                name_ind = np.argwhere( names_tot == name )[0]
                 
                 if name_ind in logparam_names:
                     values[i, name_ind] = val2latex(  res.bp.results['sample'][:,j]/np.log(10)  )
