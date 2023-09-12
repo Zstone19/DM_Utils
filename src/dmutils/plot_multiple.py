@@ -32,32 +32,35 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
     if tf_xbounds_arr is None:
         tf_xbounds_arr = [None]*nres
         
+    if isinstance(tf_ymax_arr, float) or isinstance(tf_ymax_arr, int):
+        tf_ymax_arr = [tf_ymax_arr]*nres
+        
     if len(bounds_arr) == 2:
         if np.all(isnone(bounds_arr)):
             pass
-        
-        if nres != 2:
-            bounds_arr = [bounds_arr]*nres
         else:
-            assert isinstance(bounds_arr[0], list)
+            if nres != 2:
+                bounds_arr = [bounds_arr]*nres
+            else:
+                assert isinstance(bounds_arr[0], list)
         
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
             pass
-        
-        if nres != 2:
-            tf_ymax_arr = [tf_ymax_arr]*nres
         else:
-            assert isinstance(tf_ymax_arr[0]*1.0, float)
+            if nres != 2:
+                tf_ymax_arr = [tf_ymax_arr]*nres
+            else:
+                assert isinstance(tf_ymax_arr[0]*1.0, float)
             
     if len(tf_xbounds_arr) == 2:
         if np.all(isnone(tf_xbounds_arr)):
             pass
-        
-        if nres != 2:
-            tf_xbounds_arr = [tf_xbounds_arr]*nres
         else:
-            assert isinstance(tf_xbounds_arr[0], list)
+            if nres != 2:
+                tf_xbounds_arr = [tf_xbounds_arr]*nres
+            else:
+                assert isinstance(tf_xbounds_arr[0], list)
             
     
             
