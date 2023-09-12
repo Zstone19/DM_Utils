@@ -93,6 +93,7 @@ def plot_mult(res_arr, res_names=None,
             if np.all(isnone(arr)):
                 pass
             else:
+                print(arr)
                 if nres != 2:
                     arr = [arr]*nres
                 else:
@@ -100,12 +101,6 @@ def plot_mult(res_arr, res_names=None,
                         pass
                     else:
                         arr = [arr]*nres
-
-
-    print(tf_xbounds_arr)
-    print(bounds_arr)
-    print(cloud_cbar_range)
-    print(tf_cbar_range)
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
