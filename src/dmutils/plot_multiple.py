@@ -96,10 +96,10 @@ def plot_mult(res_arr, res_names=None,
                 if nres != 2:
                     arr = [arr]*nres
                 else:
-                    print(arr)
                     if isinstance(arr[0], list):
                         pass
                     else:
+                        print(arr)
                         arr = [arr]*nres
 
     if len(tf_ymax_arr) == 2:
