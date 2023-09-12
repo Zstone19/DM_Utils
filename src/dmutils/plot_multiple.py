@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
 from astropy.table import Table
-from DM_Utils.plots import val2latex
+from dmutils.plots import val2latex
 
 
 
