@@ -236,6 +236,7 @@ class Result:
 
 
     def transfer_function_2dplot(self, ymax=None, xbounds=None, 
+                                 vmin=None, vmax=None,
                                  ax=None, output_fname=None, show=False):
         
         c = const.c.cgs.value
@@ -268,7 +269,8 @@ class Result:
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
                     extent=[vel_vals[0], vel_vals[-1],t_vals[0], t_vals[-1]],
-                    interpolation='gaussian', cmap=Matter_20_r.mpl_colormap)
+                    interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
+                    vmin=vmin, vmax=vmax)
 
         ax.plot(vel_vals, env_vals, color='c', ls='--', lw=2)
 
@@ -305,7 +307,8 @@ class Result:
             return fig, ax
 
 
-    def plot_clouds(self, rotate=False, skip=10, bounds=[-10,10], colorbar=False,
+    def plot_clouds(self, rotate=False, skip=10, bounds=[-10,10], 
+                    colorbar=False, vmin=None, vmax=None,
                     ax=None, output_fname=None, show=False):
         
         
@@ -397,8 +400,16 @@ class Result:
             plt.subplots_adjust(wspace=.08)
 
         if colorbar:
-            max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )
-            min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
+            
+            if vmax is None:
+                max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )  
+            else:
+                max_v = vmax
+      
+            if vmin is None:
+                min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
+            else:
+                min_v = vmin
             
             norm = Normalize(vmin=min_v/1000, vmax=max_v/1000)
             sm = ScalarMappable(norm=norm, cmap='coolwarm')
