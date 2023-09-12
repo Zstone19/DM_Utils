@@ -23,11 +23,35 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
         tf_ymax_arr = [None]*nres
     if tf_xbounds_arr is None:
         tf_xbounds_arr = [None]*nres
+        
+    if len(bounds_arr) == 2:
+        if nres != 2:
+            bounds_arr = [bounds_arr]*nres
+        else:
+            assert isinstance(bounds_arr[0]*1.0, float)
+        
+    if len(tf_ymax_arr) == 2:
+        if nres != 2:
+            tf_ymax_arr = [tf_ymax_arr]*nres
+        else:
+            assert isinstance(tf_ymax_arr[0]*1.0, float)
+            
+    if len(tf_xbounds_arr) == 2:
+        if nres != 2:
+            tf_xbounds_arr = [tf_xbounds_arr]*nres
+        else:
+            assert isinstance(tf_xbounds_arr[0]*1.0, float)
+            
+    
+            
+            
+
+        
     
     assert nres == len(res_names) == len(bounds_arr) == len(tf_ymax_arr) == len(tf_xbounds_arr)
     
     fig = fig = plt.figure(figsize=(4*nres, 12))
-    gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, height_ratios=[1,1.1])
+    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.5, width_ratios=[1,1,1.5])
     
     for i, res in enumerate(res_arr):
         gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2])
@@ -41,8 +65,8 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
         ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=tf_xbounds_arr[i], show=False)
     
         plt.figtext(.95, .5, res_names[i], fontsize=20, rotation=90, va='center', ha='center')
-    
-    
+
+
     if output_fname is not None:
         plt.savefig(output_fname, bbox_inches='tight', dpi=200)
         
