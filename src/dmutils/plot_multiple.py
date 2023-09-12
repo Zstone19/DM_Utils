@@ -8,12 +8,15 @@ from astropy.table import Table
 from dmutils.plots import val2latex
 
 
-def isnone(arr):
-    mask = np.zeros(len(arr), dtype=bool)
-    for i, a in enumerate(arr):
-        mask[i] = (a is None)
+def isnone(arr):    
+    if isinstance(arr, list) or isinstance(arr, np.ndarray):
+        mask = np.zeros(len(arr), dtype=bool)
+        for i, a in enumerate(arr):
+            mask[i] = (a is None)
         
-    return mask
+        return mask
+    else:    
+        return (arr is None)
     
 
 
@@ -139,6 +142,11 @@ def plot_mult(res_arr, res_names=None,
                                              show=False)
     
         ytxt = 1 - (2*i + 1)/(2*nres)
+        if ytxt < .5:
+            ytxt += 1/2/nres
+        elif ytxt > .5:
+            ytxt -= 1/2/nres
+        
         plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
 
 
