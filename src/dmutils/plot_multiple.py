@@ -42,7 +42,10 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
             if nres != 2:
                 bounds_arr = [bounds_arr]*nres
             else:
-                assert isinstance(bounds_arr[0], list)
+                if isinstance(bounds_arr[0], list):
+                    pass
+                else:
+                    bounds_arr = [bounds_arr]*nres
         
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
@@ -60,7 +63,10 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
             if nres != 2:
                 tf_xbounds_arr = [tf_xbounds_arr]*nres
             else:
-                assert isinstance(tf_xbounds_arr[0], list)
+                if isinstance(tf_xbounds_arr[0], list):
+                    pass
+                else:
+                    tf_xbounds_arr = [tf_xbounds_arr]*nres
             
     
             
