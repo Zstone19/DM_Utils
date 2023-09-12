@@ -76,8 +76,8 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
     
     assert nres == len(res_names) == len(bounds_arr) == len(tf_ymax_arr) == len(tf_xbounds_arr)
     
-    fig = fig = plt.figure(figsize=(4*nres, 12))
-    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.5, width_ratios=[1,1,1.5])
+    fig = fig = plt.figure(figsize=(4*nres, 15))
+    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.5, wspace=.3, width_ratios=[1.1, 1.1, 1])
     
     for i, res in enumerate(res_arr):
         gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2])
