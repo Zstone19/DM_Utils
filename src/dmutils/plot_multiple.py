@@ -93,10 +93,10 @@ def plot_mult(res_arr, res_names=None,
             if np.all(isnone(arr)):
                 pass
             else:
-                print(arr)
                 if nres != 2:
                     arr = [arr]*nres
                 else:
+                    print(arr)
                     if isinstance(arr[0], list):
                         pass
                     else:
