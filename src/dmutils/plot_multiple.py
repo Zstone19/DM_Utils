@@ -28,7 +28,7 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
         if nres != 2:
             bounds_arr = [bounds_arr]*nres
         else:
-            assert isinstance(bounds_arr[0]*1.0, float)
+            assert isinstance(bounds_arr[0], list)
         
     if len(tf_ymax_arr) == 2:
         if nres != 2:
@@ -40,7 +40,7 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
         if nres != 2:
             tf_xbounds_arr = [tf_xbounds_arr]*nres
         else:
-            assert isinstance(tf_xbounds_arr[0]*1.0, float)
+            assert isinstance(tf_xbounds_arr[0], list)
             
     
             
