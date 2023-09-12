@@ -102,6 +102,7 @@ def plot_mult(res_arr, res_names=None,
                         arr = [arr]*nres
 
 
+    print(tf_xbounds_arr)
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
