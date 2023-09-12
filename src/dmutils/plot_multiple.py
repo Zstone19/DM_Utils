@@ -4,7 +4,7 @@ import sys
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 
-from astropy.table import Table
+from astropy.table import Table, ascii
 from dmutils.plots import val2latex
 
 
