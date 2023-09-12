@@ -172,7 +172,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
     nres = len(res_arr)
 
     if res_names is None:
-        res_names = [None]*nres
+        res_names = ['Res ' + str(i+1) for i in range(nres)]
 
     names_tot = ['BLR model ln(Rblr)', 'BLR model beta', 'BLR model F',
        'BLR model Inc', 'BLR model Opn', 'BLR model Kappa',
