@@ -143,9 +143,9 @@ def plot_mult(res_arr, res_names=None,
     
         ytxt = 1 - (2*i + 1)/(2*nres)
         if ytxt < .5:
-            ytxt += 1/2/nres
+            ytxt += 1/2/nres/2
         elif ytxt > .5:
-            ytxt -= 1/2/nres
+            ytxt -= 1/2/nres/2
         
         plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
 
