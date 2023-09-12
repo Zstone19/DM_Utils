@@ -208,15 +208,16 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
         for j, name in enumerate(res.bp.para_names['name']):
                         
             if name in names_tot:
+                print(names_tot == name)
+                print(names_tot[0], name, names_tot[0] == name)
                 name_ind = np.argwhere( names_tot == name )
-                print(name_ind)
                 
-                if name_ind in logparam_names:
+                if name in logparam_names:
                     values[i, name_ind] = val2latex(  res.bp.results['sample'][:,j]/np.log(10)  )
-                elif name_ind == 'BLR model ln(Mbh)':
+                elif name == 'BLR model ln(Mbh)':
                     mbh_samps = res.bp.results['sample'][:,j]/np.log(10) + 6
                     values[i, name_ind] = val2latex( mbh_samps )
-                elif name_ind == 'BLR model Inc':
+                elif name == 'BLR model Inc':
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j]*180/np.pi )
                 else:
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j])
