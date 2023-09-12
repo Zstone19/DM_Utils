@@ -222,6 +222,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
 
     colnames = np.hstack([ ['Parameter', 'Unit'], res_names ])
     table_input = np.vstack([latex_names, units, values]).T
+    print(table_input)
     dat = Table(table_input, names=colnames)
 
 
