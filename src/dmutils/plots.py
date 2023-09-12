@@ -392,7 +392,9 @@ class Result:
                 a.set_ylim(bounds)
                 
         ax[1].tick_params('y', which='both', labelsize=0)
-        plt.subplots_adjust(wspace=.08)
+        
+        if ax is None:
+            plt.subplots_adjust(wspace=.08)
 
         if colorbar:
             max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )

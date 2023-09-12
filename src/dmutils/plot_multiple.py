@@ -80,7 +80,7 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
     gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.5, wspace=.3, width_ratios=[1, 1, 1])
     
     for i, res in enumerate(res_arr):
-        gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2])
+        gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
         
         ax1 = fig.add_subplot(gs_i[0])
         ax2 = fig.add_subplot(gs_i[1], sharey=ax1, sharex=ax1)
