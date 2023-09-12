@@ -103,6 +103,9 @@ def plot_mult(res_arr, res_names=None,
 
 
     print(tf_xbounds_arr)
+    print(bounds_arr)
+    print(cloud_cbar_range)
+    print(tf_cbar_range)
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
