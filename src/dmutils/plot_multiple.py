@@ -174,18 +174,18 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
     if res_names is None:
         res_names = ['Res ' + str(i+1) for i in range(nres)]
 
-    names_tot = ['BLR model ln(Rblr)', 'BLR model beta', 'BLR model F',
+    names_tot = np.array(['BLR model ln(Rblr)', 'BLR model beta', 'BLR model F',
        'BLR model Inc', 'BLR model Opn', 'BLR model Kappa',
        'BLR model gamma', 'BLR model xi', 'BLR model ln(Mbh)',
        'BLR model fellip', 'BLR model fflow', 'BLR model ln(sigr_circ)',
        'BLR model ln(sigthe_circ', 'BLR model ln(sigr_rad)',
        'BLR model ln(sigthe_rad)', 'BLR model theta_rot',
        'BLR model ln(sig_turb)', 'line broaden', 'sys_err_line',
-       'sys_err_con', 'sigmad', 'taud', 'trend', 'A', 'Ag']
+       'sys_err_con', 'sigmad', 'taud', 'trend', 'A', 'Ag'])
 
-    logparam_names = ['BLR model ln(Rblr)', 'BLR model ln(sigr_circ)',
+    logparam_names = np.array(['BLR model ln(Rblr)', 'BLR model ln(sigr_circ)',
                      'BLR model ln(sigthe_circ', 'BLR model ln(sigr_rad)',
-                     'BLR model ln(sigthe_rad)', 'BLR model ln(sig_turb)', 'sigmad', 'taud']
+                     'BLR model ln(sigthe_rad)', 'BLR model ln(sig_turb)', 'sigmad', 'taud'])
 
     latex_names = [r'$\log_{10}(R_{BLR})$', r'$\beta$', r'$F$', r'$i$', r'$\theta_{opn}$',
                 r'$\kappa$', r'$\gamma$', r'$\xi$', r'$\log_{10}(M_{BH})$',
@@ -208,9 +208,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
         for j, name in enumerate(res.bp.para_names['name']):
                         
             if name in names_tot:
-                print(names_tot == name)
-                print(names_tot[0], name, names_tot[0] == name)
-                name_ind = np.argwhere( names_tot == name )
+                name_ind = np.argwhere( names_tot == name )[0][0]
                 
                 if name in logparam_names:
                     values[i, name_ind] = val2latex(  res.bp.results['sample'][:,j]/np.log(10)  )
