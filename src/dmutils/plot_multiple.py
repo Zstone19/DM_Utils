@@ -90,7 +90,8 @@ def plot_mult(res_arr, res_names=None, bounds_arr=None, tf_ymax_arr=None, tf_xbo
         ax_clouds = res.plot_clouds(colorbar=True, bounds=bounds_arr[i], ax=ax_clouds, show=False)
         ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=tf_xbounds_arr[i], show=False)
     
-        plt.figtext(.95, .5, res_names[i], fontsize=20, rotation=90, va='center', ha='center')
+        ytxt = 1 - (2*i - 1)/nres
+        plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
 
 
     if output_fname is not None:
