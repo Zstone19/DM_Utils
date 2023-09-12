@@ -99,8 +99,8 @@ def plot_mult(res_arr, res_names=None,
                     if isinstance(arr[0], list):
                         pass
                     else:
-                        print(arr)
                         arr = [arr]*nres
+                        print(arr)
 
     if len(tf_ymax_arr) == 2:
         if np.all(isnone(tf_ymax_arr)):
