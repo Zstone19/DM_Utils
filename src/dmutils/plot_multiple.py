@@ -26,7 +26,7 @@ def plot_mult(res_arr, res_names=None,
     nres = len(res_arr)
 
 
-    if cloud_cbar_range is None:
+    if cloud_cbar_range == 'share':
         max_vel = -np.inf
         min_vel = np.inf
         skip = 10
@@ -49,7 +49,7 @@ def plot_mult(res_arr, res_names=None,
         
         
         
-    if tf_cbar_range is None:
+    if tf_cbar_range == 'share':
         max_tf = -np.inf
         min_tf = np.inf
         
@@ -79,6 +79,10 @@ def plot_mult(res_arr, res_names=None,
         tf_ymax_arr = [None]*nres
     if tf_xbounds_arr is None:
         tf_xbounds_arr = [None]*nres
+    if cloud_cbar_range is None:
+        cloud_cbar_range = [[None,None]]*nres
+    if tf_cbar_range is None:
+        tf_cbar_range = [[None,None]]*nres
         
     if isinstance(tf_ymax_arr, float) or isinstance(tf_ymax_arr, int):
         tf_ymax_arr = [tf_ymax_arr]*nres
