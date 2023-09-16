@@ -166,6 +166,77 @@ def plot_mult(res_arr, res_names=None,
 
 
 
+def plot_mult_fitres(res_arr, res_names=None, 
+                     xbounds_arr=None, output_fname=None, show=False):
+    
+    
+    assert len(res_arr) > 0
+    nres = len(res_arr)
+    
+    if res_names is None:
+        res_names = [None]*nres
+    if xbounds_arr is None:
+        xbounds_arr = [None]*nres
+
+    if len(xbounds_arr) == 2:
+        if np.all(isnone(xbounds_arr)):
+            pass
+        else:
+            if nres != 2:
+                xbounds_arr = [xbounds_arr]*nres
+            else:
+                if isinstance(xbounds_arr[0], list):
+                    pass
+                else:
+                    xbounds_arr = [xbounds_arr]*nres
+                    
+                    
+    assert nres == len(res_names) == len(xbounds_arr)
+
+
+
+    fig = plt.figure(figsize=(15, 5*nres))
+    gs_tot = gridspec.GridSpec(nres, 5, figure=fig, hspace=.3, wspace=.2, width_ratios=[1, 1, 1])
+    
+    for i, res in enumerate(res_arr):
+        gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.08)
+        ax1 = fig.add_subplot(gs_l[0])
+        ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
+        ax3 = fig.add_subplot(gs_l[2], sharey=ax1, sharex=ax1)
+        ax_2d = [ax1, ax2, ax3]
+
+        gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,3:], wspace=.08)
+        ax1 = fig.add_subplot(gs_r[0])
+        ax2 = fig.add_subplot(gs_r[1], sharex=ax1)
+        ax_lc = [ax1, ax2]
+        
+        ax_2d = res.line2d_plot(xbounds=xbounds_arr[i], ax=ax_2d, show=False)
+        ax_lc = res.lc_fits_plot(ax=ax_lc, show=False)
+        
+            
+        ytxt = 1 - (2*i + 1)/(2*nres)
+        if ytxt < .5:
+            ytxt += 1/2/nres/2
+        elif ytxt > .5:
+            ytxt -= 1/2/nres/2
+        
+        plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
+
+
+    if output_fname is not None:
+        plt.savefig(output_fname, bbox_inches='tight', dpi=200)
+        
+    if show:
+        plt.show()
+        
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+    
+    return
+
+
 
 def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
 
