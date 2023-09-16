@@ -196,7 +196,7 @@ def plot_mult_fitres(res_arr, res_names=None,
 
 
     fig = plt.figure(figsize=(15, 5*nres))
-    gs_tot = gridspec.GridSpec(nres, 5, figure=fig, hspace=.3, wspace=.2, width_ratios=[1, 1, 1])
+    gs_tot = gridspec.GridSpec(nres, 5, figure=fig, hspace=.3, wspace=.2)
     
     for i, res in enumerate(res_arr):
         gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.08)
