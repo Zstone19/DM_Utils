@@ -6,6 +6,7 @@ from matplotlib import gridspec
 
 from astropy.table import Table
 from astropy.io import ascii
+import astropy.constants as const
 from dmutils.plots import val2latex
 
 
@@ -274,6 +275,18 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
 
 
     for i, res in enumerate(res_arr):
+        prof_err = res.bp.data['line2d_data']['profile'][:,:,2]
+        
+        c = const.c.cgs.value
+        wl_vals = res.bp.data['line2d_data']['wl_vals']
+        vel_vals = (c/1e5) * ( wl_vals/(1+res.z) - res.central_wl )/res.central_wl
+        dv = np.abs(vel_vals[1] - vel_vals[0])/res.bp.VelUnit
+        
+        line_lc_err = np.sqrt( np.sum(prof_err**2, axis=1) )*dv
+        _, _ , yerr_cont = res.bp.data['con_data'].T
+
+
+
         for j in range(len(names_tot)):
             values[i, j] = '---'
 
@@ -289,6 +302,12 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
                     values[i, name_ind] = val2latex( mbh_samps )
                 elif name == 'BLR model Inc':
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j]*180/np.pi )
+                elif name == 'sys_err_line':
+                    vals = res.bp.results['sample'][:,j]
+                    values[i, name_ind] = (np.exp(np.median(vals)) - 1.0) * np.mean(line_lc_err)
+                elif name == 'sys_err_con':
+                    vals = res.bp.results['sample'][:,j]
+                    values[i, name_ind] = (np.exp(np.median(vals)) - 1.0) * np.mean(yerr_cont)
                 else:
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j])
 
