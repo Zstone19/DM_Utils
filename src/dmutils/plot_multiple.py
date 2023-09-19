@@ -304,10 +304,10 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j]*180/np.pi )
                 elif name == 'sys_err_line':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = (np.exp(np.median(vals)) - 1.0) * np.mean(line_lc_err)
+                    values[i, name_ind] = val2latex( (np.exp(vals) - 1.0) * np.mean(line_lc_err) )
                 elif name == 'sys_err_con':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = (np.exp(np.median(vals)) - 1.0) * np.mean(yerr_cont)
+                    values[i, name_ind] = val2latex( (np.exp(vals) - 1.0) * np.mean(yerr_cont) )
                 else:
                     values[i, name_ind] = val2latex(res.bp.results['sample'][:,j])
 
