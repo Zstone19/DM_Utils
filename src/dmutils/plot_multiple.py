@@ -278,7 +278,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
         prof_err = res.bp.data['line2d_data']['profile'][:,:,2]
         
         c = const.c.cgs.value
-        wl_vals = res.bp.data['line2d_data']['wl_vals']
+        wl_vals = res.bp.data['line2d_data']['profile'][0,:,0].copy()
         vel_vals = (c/1e5) * ( wl_vals/(1+res.z) - res.central_wl )/res.central_wl
         dv = np.abs(vel_vals[1] - vel_vals[0])/res.bp.VelUnit
         
