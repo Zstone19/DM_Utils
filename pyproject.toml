@@ -16,7 +16,7 @@ pyqsofit = {git = "https://github.com/Zstone19/PyQSOFit"}
 palettable = "^3.3.3"
 bbackend = {git = "https://github.com/LiyrAstroph/BRAINS.git", rev = "master", subdirectory = "analysis"}
 tqdm = "^4.65.0"
-pypetal ">=0.1.0"
+pypetal = ">=0.1.0"
 
 
 [build-system]
