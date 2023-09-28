@@ -778,14 +778,21 @@ class Result:
             lag_err_lo = med_lag - np.percentile( downsampled_posterior, 16 )
             lag_err_hi = np.percentile( downsampled_posterior, 84 ) - med_lag
             
+            ax[0].plot(lags, wtau, color='k', lw=1)
+            ax[0].plot(lags, acf, color='r', lw=1)
+            ax[0].plot(lags, smooth_dist, color='k', lw=2)
+            
+            ax[1].hist(downsampled_posterior, bins=25)
+            ax[1].axvline(np.median(downsampled_posterior), color='r', ls='--')
+            ax[1].axvspan(min_bound, max_bound, color='k', alpha=.2)
             
             
-            _, ax = plot_weight_output(lags, lag_posterior, 
-                       lag_err_lo, lag_err_hi, med_lag, 
-                       min_bound, max_bound, peak, 
-                       wtau, smooth_dist, acf, 
-                       zoom=True, 
-                       ax_tot=ax, show=False, output_fname=None)
+            # _, ax = plot_weight_output(lags, lag_posterior, 
+            #            lag_err_lo, lag_err_hi, med_lag, 
+            #            min_bound, max_bound, peak, 
+            #            wtau, smooth_dist, acf, 
+            #            zoom=True, 
+            #            ax_tot=ax, show=False, output_fname=None)
             
         else:            
             ax.hist(lag_posterior, bins=25)
@@ -926,16 +933,13 @@ class Result:
             ax_bot = plt.subplot(sub_gs[1])
             ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
             ax2 = [ax_top, ax_bot]
-            
-            ax2[0].hist(mbh_samples, bins=25)
-            ax2[1].hist(mbh_samples, bins=25)
         
         else:
             ax2 = fig.add_subplot(gs_br[:, 1])
 
         
-            self.plot_lag_posterior(weight=weight, k=2, width=15,
-                                    ax=ax2, show=False)
+        self.plot_lag_posterior(weight=weight, k=2, width=15,
+                                ax=ax2, show=False)
 
 
         
