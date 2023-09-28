@@ -912,7 +912,7 @@ class Result:
         ax1.hist(mbh_samples, bins=25)
         ax1.axvline(np.median(mbh_samples), color='r', ls='--')
         
-        mbh_text = r'$\log_{10}(M_{BH}/M_{\odot}) = ' + '{:.2f}'.format(np.median(mbh_samples)) + r' $'
+        mbh_text = val2latex(mbh_samples)
         ax1.text( .05, .95, mbh_text, transform=ax1.transAxes, fontsize=15, va='top', ha='left')
         ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
@@ -1167,7 +1167,7 @@ def plot_weight_output(lags, lag_dist,
     ha='left'
     ax_tot[1].text( xtxt, .85, peak_str,
                                 ha=ha, transform=ax_tot[1].transAxes,
-                                fontsize=13 )
+                                fontsize=15 )
 
     ax_tot[1].set_xlabel( r'$' + xlabel + r'$ [' + time_unit + ']', fontsize=15 )
 
