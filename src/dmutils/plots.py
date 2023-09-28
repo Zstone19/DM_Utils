@@ -767,7 +767,7 @@ class Result:
             assert np.all( np.isfinite(yc) )
             assert np.all( np.isfinite(xl) )
             assert np.all( np.isfinite(yl) )
-            wtau, lags, ntau, acf, n0 = get_weights(xc-xc[0], yc, xl-xl[0], yl, k=k)
+            wtau, lags, ntau, acf, n0 = get_weights(xc-xc[0], yc, xl-xc[0], yl, k=k)
 
         
         
