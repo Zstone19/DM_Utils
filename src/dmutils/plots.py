@@ -785,7 +785,7 @@ class Result:
                        min_bound, max_bound, peak, 
                        wtau, smooth_dist, acf, 
                        zoom=True, 
-                       ax=ax, show=False, output_fname=None)
+                       ax_tot=ax, show=False, output_fname=None)
             
         else:            
             ax.hist(lag_posterior, bins=25)
