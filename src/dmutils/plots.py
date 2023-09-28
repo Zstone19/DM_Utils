@@ -791,7 +791,6 @@ class Result:
                        lag_err_lo, lag_err_hi, med_lag, 
                        min_bound, max_bound, peak, 
                        wtau, smooth_dist, acf, 
-                       zoom=True, 
                        ax_tot=ax, show=False)
             
         else:            
@@ -1081,7 +1080,7 @@ def plot_weight_output(lags, lag_dist,
                        lag_err_lo, lag_err_hi, lag_value, 
                        llim, rlim, peak, 
                        weight_dist, smooth_dist, acf, 
-                       zoom=False, 
+                    #    zoom=False, 
                        ax_tot=None, show=False, output_fname=None):
 
     #Read general kwargs
@@ -1151,8 +1150,8 @@ def plot_weight_output(lags, lag_dist,
         ytop = 1.5*np.max(hist[good_ind])
 
     #Inset axis?
-    lagmax = np.max(lags)
-    lagmin = np.min(lags)
+    # lagmax = np.max(lags)
+    # lagmin = np.min(lags)
 
     # if ( (rlim-llim) < .1*(lagmax-lagmin) ) | zoom:
 
