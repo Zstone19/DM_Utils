@@ -379,14 +379,14 @@ class Result:
         
         ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
                     marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
-        ax[0].set_xlabel('x', fontsize=18)
-        ax[0].set_ylabel('z', fontsize=18)
+        ax[0].set_xlabel('x [lt-d]', fontsize=18)
+        ax[0].set_ylabel('z [lt-d]', fontsize=18)
         ax[0].set_title('Edge-On', fontsize=20)
         
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
-        ax[1].set_xlabel('y', fontsize=18)
+        ax[1].set_xlabel('y [lt-d]', fontsize=18)
         ax[1].set_title('Face-On', fontsize=20)
 
         if bounds is not None:
@@ -530,9 +530,9 @@ class Result:
                     alpha=alpha_arr[mask], normalize=True, length=length,
                     linewidths=1.5)
         
-        ax.set_xlabel(r'$x$', fontsize=25, labelpad=20)
-        ax.set_ylabel(r'$y$', fontsize=25, labelpad=20)
-        ax.set_zlabel(r'$z$', fontsize=25, labelpad=20)
+        ax.set_xlabel(r'$x$ [lt-d]', fontsize=25, labelpad=20)
+        ax.set_ylabel(r'$y$ [lt-d]', fontsize=25, labelpad=20)
+        ax.set_zlabel(r'$z$ [lt-d]', fontsize=25, labelpad=20)
 
         if color:
             cbar = plt.colorbar(sm, ax=ax, pad=.1, shrink=.7, aspect=25)
