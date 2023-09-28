@@ -778,15 +778,6 @@ class Result:
             lag_err_lo = med_lag - np.percentile( downsampled_posterior, 16 )
             lag_err_hi = np.percentile( downsampled_posterior, 84 ) - med_lag
             
-            # ax[0].plot(lags, wtau, color='k', lw=1)
-            # ax[0].plot(lags, acf, color='r', lw=1)
-            # ax[0].plot(lags, smooth_dist, color='k', lw=2)
-            
-            # ax[1].hist(downsampled_posterior, bins=25)
-            # ax[1].axvline(np.median(downsampled_posterior), color='r', ls='--')
-            # ax[1].axvspan(min_bound, max_bound, color='k', alpha=.2)
-            
-            
             _, ax = plot_weight_output(lags, lag_posterior, 
                        lag_err_lo, lag_err_hi, med_lag, 
                        min_bound, max_bound, peak, 
@@ -1089,7 +1080,6 @@ def plot_weight_output(lags, lag_dist,
     #--------------------------------------------------------------------------------
 
     if ax_tot is None:
-        fig, ax = plt.subplots(1, 2, figsize=(5,11))
         gs = gridspec.GridSpec(1, 1)
             
         sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0],
@@ -1149,108 +1139,6 @@ def plot_weight_output(lags, lag_dist,
     else:
         ytop = 1.5*np.max(hist[good_ind])
 
-    #Inset axis?
-    # lagmax = np.max(lags)
-    # lagmin = np.min(lags)
-
-    # if ( (rlim-llim) < .1*(lagmax-lagmin) ) | zoom:
-
-    #     #Put inset on the right if peak is on the left and vice-versa
-    #     if peak < (lagmin+lagmax)/2:
-    #         loc=1
-    #     else:
-    #         loc=2
-
-    #     axins = inset_axes(ax_tot[1], width='45%', height='40%', loc=loc)
-
-    #     #Make connectors between the inset and the main plot
-    #     good_ind = np.argwhere( (lags >= llim) & (lags <= rlim) ).T[0]
-    #     if np.max(hist[good_ind]) < .4*ytop:
-    #         loc11 = 3
-    #         loc21 = 2
-
-    #         loc12 = 4
-    #         loc22 = 1
-
-    #     else:
-    #         loc11 = 3
-    #         loc21 = 3
-
-    #         loc12 = 4
-    #         loc22 = 4
-
-    #     rect = TransformedBbox(axins.viewLim, ax_tot[1].transData)
-
-    #     p1 = BboxConnector(axins.bbox, rect, loc1=loc11, loc2=loc21, ec='k')
-    #     axins.add_patch(p1)
-    #     p1.set_clip_on(False)
-
-    #     p2 = BboxConnector(axins.bbox, rect, loc1=loc12, loc2=loc22, ec='k')
-    #     axins.add_patch(p2)
-    #     p2.set_clip_on(False)
-
-    #     #Plot the histograms on both the main and inset axes
-    #     for a in [ax_tot[1], axins]:
-    #         bin1 = a.fill_between(lags, np.zeros_like(hist), hist, step='mid')
-
-    #         bin2 = a.fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
-
-    #         a.axvspan( llim, rlim, color='k', alpha=.1 )
-    #         a.set_ylim(0, ytop)
-
-    #     axins.set_xlim( llim, rlim )
-    #     axins.set_xticks([])
-
-
-    #     #If the peak is small, make box around it in the main plot
-    #     if np.max(hist[good_ind]) < .4*ytop:
-    #         y2 = np.max( hist[good_ind] )
-    #         axins.set_ylim(top=1.05*y2)
-
-    #         x1, x2 = ax_tot[1].get_xlim()
-    #         xmin = (llim - x1)/(x2-x1)
-    #         xmax = (rlim - x1)/(x2-x1)
-
-    #         y1_ax, y2_ax = ax_tot[1].get_ylim()
-    #         ymax = (1.1*y2 - y1_ax)/(y2_ax-y1_ax)
-
-    #         ax_tot[1].axhline( 1.05*y2, xmin, xmax, color='k', lw=1.5 )
-    #         ax_tot[1].axvline( llim, 0, ymax, color='k', lw=1.5 )
-    #         ax_tot[1].axvline( rlim, 0, ymax, color='k', lw=1.5 )
-
-
-    #         yticks = ax_tot[1].get_yticks()
-    #         m_yticks = ax_tot[1].get_yticks(minor=True)
-
-    #         good_ind = np.argwhere( yticks <= 1.05*y2 ).T[0]
-    #         axins.set_yticks( yticks[good_ind] )
-
-    #         good_ind = np.argwhere( m_yticks <= 1.05*y2 ).T[0]
-    #         axins.set_yticks( m_yticks[good_ind], minor=True )
-
-    #         axins.tick_params('both', which='major', length=7)
-    #         axins.tick_params('both', which='minor', length=4)
-
-    #     else:
-    #         y1, y2 = ax_tot[1].get_ylim()
-    #         axins.set_ylim(y1, y2)
-
-    #         yticks = ax_tot[1].get_yticks()
-    #         m_yticks = ax_tot[1].get_yticks(minor=True)
-
-    #         axins.set_yticks( yticks )
-    #         axins.set_yticks( m_yticks, minor=True )
-
-    #         axins.tick_params('both', which='major', length=0)
-    #         axins.tick_params('both', which='minor', length=0)
-
-
-    #     axins.set_yticklabels([])
-
-
-
-    # else:
-    loc=1
 
     bin1 = ax_tot[1].fill_between(lags, np.zeros_like(hist), hist, step='mid')
     bin2 = ax_tot[1].fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
@@ -1275,31 +1163,23 @@ def plot_weight_output(lags, lag_dist,
     peak_str = err2str( lag_value, lag_err_hi, lag_err_lo, dec=2 )
     peak_str = r'$' + r'{}'.format(peak_str) + r'$' + ' ' + time_unit
 
-    if loc == 1:
-        xtxt = .05
-        ha='left'
-    else:
-        xtxt = .95
-        ha='right'
-
+    xtxt = .05
+    ha='left'
     ax_tot[1].text( xtxt, .85, peak_str,
                                 ha=ha, transform=ax_tot[1].transAxes,
                                 fontsize=13 )
 
-    ax_tot[1].set_xlabel( r'$' + xlabel + r' [' + time_unit + ']', fontsize=15 )
+    ax_tot[1].set_xlabel( r'$' + xlabel + r'$ [' + time_unit + ']', fontsize=15 )
 
     for a in ax_tot:
-        a.set_xlim( llim-.5*(rlim-llim), rlim+.5*(rlim-llim) )
+        a.set_xlim( llim-.1*(rlim-llim), rlim+.1*(rlim-llim) )
+        a.tick_params('both', which='major', length=7)
+        a.tick_params('both', which='minor', length=3)
 
-    ax_tot[1].set_ylabel('N', fontsize=16)
     ax_tot[1].tick_params('both', labelsize=11)
-    ax_tot[1].tick_params('both', which='major', length=7)
-    ax_tot[1].tick_params('both', which='minor', length=3)
-
     ax_tot[0].tick_params('y', labelsize=11)
     ax_tot[0].tick_params('x', labelsize=0)
-    ax_tot[0].tick_params('both', which='major', length=7)
-    ax_tot[0].tick_params('both', which='minor', length=3)
+
 
     #Put legends for the top and bottom plots
     ax_tot[0].legend( [im1, im2, im3], [r'w($\tau$)', 'Smoothed Dist', 'ACF'],
