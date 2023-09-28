@@ -1301,7 +1301,8 @@ def plot_weight_output(lags, lag_dist,
                             bbox_to_anchor=(1, 1), fontsize=11, loc='upper left')
 
 
-    plt.savefig( output_fname, dpi=200, bbox_inches='tight' )
+    if output_fname is not None:
+        plt.savefig( output_fname, dpi=200, bbox_inches='tight' )
 
 
     if show:
