@@ -908,7 +908,7 @@ class Result:
         
         #BOTTOM RIGHT: Posteriors
         gs_br = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=gs_tot[1,2:])
-        ax1 = fig.add_subplot(gs_br[0, :])
+        ax1 = fig.add_subplot(gs_br[:, 0])
         
             #MBH
         mbh_samples = self.bp.results['sample'][:,self.bp.locate_bhmass()]/np.log(10) + 6        
@@ -920,11 +920,16 @@ class Result:
         ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
             #Lag
-        sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_br[1, :],
-                                                height_ratios=[1, 3], hspace=0)
-        ax_bot = plt.subplot(sub_gs[1])
-        ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
-        ax2 = [ax_top, ax_bot]
+        if weight:
+            sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_br[:, 1],
+                                                    height_ratios=[1, 3], hspace=0)
+            ax_bot = plt.subplot(sub_gs[1])
+            ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
+            ax2 = [ax_top, ax_bot]
+        
+        else:
+            fig.add_subplot(gs_br[:, 1])
+
         
         self.plot_lag_posterior(weight=weight, k=2, width=15,
                                 ax=ax2, show=False)
