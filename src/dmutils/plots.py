@@ -4,6 +4,8 @@ import sys
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from mpl_toolkits.axes_grid1.inset_locator import (BboxConnector,
+                                                   TransformedBbox, inset_axes)
 
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
@@ -18,7 +20,8 @@ from scipy.ndimage import gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
 
 from bbackend import postprocess, bplotlib
-
+from pypetal.weighting.utils import get_weights, get_bounds
+from pypetal.utils.petalio import err2str
 
 
 ###############################################################################
@@ -717,7 +720,91 @@ class Result:
         if ax is not None:
             return ax
         else:
-            return fig, ax    
+            return fig, ax   
+        
+        
+############################################################################################################## 
+        
+    def plot_lag_posterior(self, weight=True, k=2, width=15,
+                           ax=None, output_fname=None, show=False):
+        
+        c = const.c.cgs.value
+        
+        if ax is None:
+            if weight:
+                gs = gridspec.GridSpec(1, 1)                
+                sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0],
+                                                        height_ratios=[1, 3], hspace=0)
+                ax_bot = plt.subplot(sub_gs[1])
+                ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
+
+                ax = [ax_top, ax_bot]
+            else:
+                fig, ax = plt.subplots(1, 1, figsize=(5,5), sharey=True)
+            
+            
+        psi2d = self.bp.results['tran2d_rec']
+        tau_vals = self.bp.results['tau_rec']
+        sum2_arr = psi2d.sum(axis=2).sum(axis=1)
+        sum1_arr = np.sum( psi2d.sum(axis=2)*tau_vals, axis=1)
+        lag_posterior = sum1_arr / sum2_arr
+        
+        
+        if weight:
+            xc = self.bp.data['con_data'].T[0]
+            yc = self.bp.data['con_data'].T[1]
+            
+            xl = self.bp.data['line2d_data']['time']
+            
+            prof = self.bp.data['line2d_data']['profile'][:,:,1]            
+            wl_vals = self.bp.data['line2d_data']['profile'][0,:,0].copy()
+            vel_vals = (c/1e5)*( (wl_vals/(1+self.z)) - self.central_wl )/self.central_wl #km/s
+            dV = (vel_vals[1] - vel_vals[0])/self.bp.VelUnit #km/s
+            line_lc = np.sum(prof, axis=1)*dV
+            yl = line_lc*self.central_wl*self.bp.VelUnit/(c/1e5)
+            
+            
+            lag_bounds = [np.min(tau_vals), np.max(tau_vals)]
+            wtau, lags, ntau, acf, n0 = get_weights(xc, yc, xl, yl)
+
+        
+        
+            min_bound, peak, max_bound, smooth_dist, smooth_weight_dist = get_bounds(lag_posterior, wtau, lags, width=width, rel_height=.99)
+            downsampled_posterior = lag_posterior[(lag_posterior > min_bound) & (lag_posterior < max_bound)]
+
+            med_lag = np.median(downsampled_posterior)
+            lag_err_lo = med_lag - np.percentile( downsampled_posterior, 16 )
+            lag_err_hi = np.percentile( downsampled_posterior, 84 ) - med_lag
+            
+            
+            
+            _, ax = plot_weight_output(lags, lag_posterior, 
+                       lag_err_lo, lag_err_hi, med_lag, 
+                       min_bound, max_bound, peak, 
+                       wtau, smooth_dist, acf, 
+                       zoom=True, 
+                       ax=ax, show=False, output_fname=None)
+            
+        else:            
+            ax.hist(lag_posterior, bins=25)
+            ax.axvline(np.median(lag_posterior), color='r', ls='--')
+            
+            lag_text = r'$\tau = ' + '{:.3f}'.format(np.median(lag_posterior)) + r' $'
+            ax.text( .05, .95, lag_text, transform=ax.transAxes, fontsize=15, va='top', ha='left')
+            ax.set_xlabel(r'$\tau$ [d]', fontsize=15)
+            
+        
+        
+        if output_fname is not None:
+            plt.savefig(output_fname, bbox_inches='tight', dpi=200)
+
+        if show:
+            plt.show()
+    
+        if ax is not None:
+            return ax
+        else:
+            return fig, ax  
 
 
 ###############################################################################
@@ -818,9 +905,8 @@ class Result:
         
         
         #BOTTOM RIGHT: Posteriors
-        gs_br = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[1,2:])
-        ax1 = fig.add_subplot(gs_br[0])
-        ax2 = fig.add_subplot(gs_br[1])
+        gs_br = gridspec.GridSpecFromSubplotSpec(2, 2, subplot_spec=gs_tot[1,2:])
+        ax1 = fig.add_subplot(gs_br[0, :])
         
             #MBH
         mbh_samples = self.bp.results['sample'][:,self.bp.locate_bhmass()]/np.log(10) + 6        
@@ -832,18 +918,15 @@ class Result:
         ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
             #Lag
-        psi2d = self.bp.results['tran2d_rec']
-        tau_vals = self.bp.results['tau_rec']
-        sum2_arr = psi2d.sum(axis=2).sum(axis=1)
-        sum1_arr = np.sum( psi2d.sum(axis=2)*tau_vals, axis=1)
-        lags = sum1_arr / sum2_arr
+        sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_br[1, :],
+                                                height_ratios=[1, 3], hspace=0)
+        ax_bot = plt.subplot(sub_gs[1])
+        ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
+        ax2 = [ax_top, ax_bot]
         
-        ax2.hist(lags, bins=25)
-        ax2.axvline(np.median(lags), color='r', ls='--')
-        
-        lag_text = r'$\tau = ' + '{:.3f}'.format(np.median(lags)) + r' $'
-        ax2.text( .05, .95, lag_text, transform=ax2.transAxes, fontsize=15, va='top', ha='left')
-        ax2.set_xlabel(r'$\tau$ [d]', fontsize=15)
+        self.plot_lag_posterior(weight=True, k=2, width=15,
+                                ax=ax2, show=False)
+
 
         
         if output_fname is not None:
@@ -976,3 +1059,253 @@ def val2latex(vals):
     err_lo = val - val_lo
     
     return r'${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'.format(val, err_hi, err_lo)
+
+
+
+
+def plot_weight_output(lags, lag_dist, 
+                       lag_err_lo, lag_err_hi, lag_value, 
+                       llim, rlim, peak, 
+                       weight_dist, smooth_dist, acf, 
+                       zoom=False, 
+                       ax_tot=None, show=False, output_fname=None):
+
+    #Read general kwargs
+    time_unit = 'd'
+
+    #--------------------------------------------------------------------------------
+
+    gs = gridspec.GridSpec(1, 1)
+
+    if ax_tot is None:
+        fig, ax = plt.subplots(1, 2, figsize=(5,11))
+            
+        sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0],
+                                                height_ratios=[1, 3], hspace=0)
+
+        ax_bot = plt.subplot(sub_gs[1])
+        ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
+
+        ax_tot = [ax_top, ax_bot]
+        
+        
+    xlabel = r'\tau'
+
+
+    #Set ACF=0 when ACF<0
+        #Left side
+    left_inds = np.argwhere( (acf < 0) & (lags < 0) ).T[0]
+    if len(left_inds) == 0:
+        ind1 = 0
+    else:
+        ind1 = np.max( left_inds )
+
+        #Right side
+    right_inds = np.argwhere( (acf < 0) & (lags > 0) ).T[0]
+    if len(right_inds) == 0:
+        ind2 = len(acf)-1
+    else:
+        ind2 = np.min( right_inds )
+
+    acf[:ind1] = 0
+    acf[ind2:] = 0
+
+
+    #Plot original lag distribution
+    dbin = lags[1] - lags[0]
+    bin0 = np.min(lags)
+
+    bin_edges = []
+    bin0 = np.min(lags) - dbin/2
+
+    for j in range(len(lags)+1):
+        bin_edges.append( bin0 + j*dbin )
+
+    hist, _ = np.histogram(lag_dist, bins=bin_edges)
+    hist = np.array(hist, dtype=float)
+
+
+    #Set top of plot
+    good_ind = np.argwhere( ( lags >= llim ) & ( lags <= rlim ) ).T[0]
+
+    if np.argmax(hist) in good_ind:
+        ytop = 1.5*np.max(hist)
+
+    elif np.percentile(hist, 99) > np.max(hist):
+        ytop = np.percentile(hist, 99)
+
+    else:
+        ytop = 1.5*np.max(hist[good_ind])
+
+    #Inset axis?
+    lagmax = np.max(lags)
+    lagmin = np.min(lags)
+
+    if ( (rlim-llim) < .1*(lagmax-lagmin) ) | zoom:
+
+        #Put inset on the right if peak is on the left and vice-versa
+        if peak < (lagmin+lagmax)/2:
+            loc=1
+        else:
+            loc=2
+
+        axins = inset_axes(ax_tot[1], width='45%', height='40%', loc=loc)
+
+        #Make connectors between the inset and the main plot
+        good_ind = np.argwhere( (lags >= llim) & (lags <= rlim) ).T[0]
+        if np.max(hist[good_ind]) < .4*ytop:
+            loc11 = 3
+            loc21 = 2
+
+            loc12 = 4
+            loc22 = 1
+
+        else:
+            loc11 = 3
+            loc21 = 3
+
+            loc12 = 4
+            loc22 = 4
+
+        rect = TransformedBbox(axins.viewLim, ax_tot[1].transData)
+
+        p1 = BboxConnector(axins.bbox, rect, loc1=loc11, loc2=loc21, ec='k')
+        axins.add_patch(p1)
+        p1.set_clip_on(False)
+
+        p2 = BboxConnector(axins.bbox, rect, loc1=loc12, loc2=loc22, ec='k')
+        axins.add_patch(p2)
+        p2.set_clip_on(False)
+
+        #Plot the histograms on both the main and inset axes
+        for a in [ax_tot[1], axins]:
+            bin1 = a.fill_between(lags, np.zeros_like(hist), hist, step='mid')
+
+            bin2 = a.fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
+
+            a.axvspan( llim, rlim, color='k', alpha=.1 )
+            a.set_ylim(0, ytop)
+
+        axins.set_xlim( llim, rlim )
+        axins.set_xticks([])
+
+
+        #If the peak is small, make box around it in the main plot
+        if np.max(hist[good_ind]) < .4*ytop:
+            y2 = np.max( hist[good_ind] )
+            axins.set_ylim(top=1.05*y2)
+
+            x1, x2 = ax_tot[1].get_xlim()
+            xmin = (llim - x1)/(x2-x1)
+            xmax = (rlim - x1)/(x2-x1)
+
+            y1_ax, y2_ax = ax_tot[1].get_ylim()
+            ymax = (1.1*y2 - y1_ax)/(y2_ax-y1_ax)
+
+            ax_tot[1].axhline( 1.05*y2, xmin, xmax, color='k', lw=1.5 )
+            ax_tot[1].axvline( llim, 0, ymax, color='k', lw=1.5 )
+            ax_tot[1].axvline( rlim, 0, ymax, color='k', lw=1.5 )
+
+
+            yticks = ax_tot[1].get_yticks()
+            m_yticks = ax_tot[1].get_yticks(minor=True)
+
+            good_ind = np.argwhere( yticks <= 1.05*y2 ).T[0]
+            axins.set_yticks( yticks[good_ind] )
+
+            good_ind = np.argwhere( m_yticks <= 1.05*y2 ).T[0]
+            axins.set_yticks( m_yticks[good_ind], minor=True )
+
+            axins.tick_params('both', which='major', length=7)
+            axins.tick_params('both', which='minor', length=4)
+
+        else:
+            y1, y2 = ax_tot[1].get_ylim()
+            axins.set_ylim(y1, y2)
+
+            yticks = ax_tot[1].get_yticks()
+            m_yticks = ax_tot[1].get_yticks(minor=True)
+
+            axins.set_yticks( yticks )
+            axins.set_yticks( m_yticks, minor=True )
+
+            axins.tick_params('both', which='major', length=0)
+            axins.tick_params('both', which='minor', length=0)
+
+
+        axins.set_yticklabels([])
+
+
+
+    else:
+        loc=1
+
+        bin1 = ax_tot[1].fill_between(lags, np.zeros_like(hist), hist, step='mid')
+        bin2 = ax_tot[1].fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
+        ax_tot[1].axvspan( llim, rlim, color='k', alpha=.1 )
+
+        ax_tot[1].set_ylim(0, ytop)
+
+
+    #Plot ACF
+    im3, = ax_tot[0].plot(lags, acf, c='r')
+
+
+    #Plot weighting function
+    im1, = ax_tot[0].plot(lags, weight_dist, c='k')
+    ax_tot[0].set_yticks([.5, 1])
+
+    #Plot smoothed distribution
+    im2, = ax_tot[0].plot(lags, smooth_dist/np.max(smooth_dist), c='DodgerBlue')
+    ax_tot[0].axvspan( llim, rlim, color='k', alpha=.1 )
+
+    #Write lag and error
+    peak_str = err2str( lag_value, lag_err_hi, lag_err_lo, dec=2 )
+    peak_str = r'$' + r'{}'.format(peak_str) + r'$' + ' ' + time_unit
+
+    if loc == 1:
+        xtxt = .05
+        ha='left'
+    else:
+        xtxt = .95
+        ha='right'
+
+    ax_tot[1].text( xtxt, .85, peak_str,
+                                ha=ha, transform=ax_tot[1].transAxes,
+                                fontsize=13 )
+
+    ax_tot[1].set_xlabel( r'$' + xlabel + r' [' + time_unit + ']', fontsize=15 )
+
+
+
+    ax_tot[1].set_ylabel('N', fontsize=16)
+    ax_tot[1].tick_params('both', labelsize=11)
+    ax_tot[1].tick_params('both', which='major', length=7)
+    ax_tot[1].tick_params('both', which='minor', length=3)
+
+    ax_tot[0].tick_params('y', labelsize=11)
+    ax_tot[0].tick_params('x', labelsize=0)
+    ax_tot[0].tick_params('both', which='major', length=7)
+    ax_tot[0].tick_params('both', which='minor', length=3)
+
+
+    plt.subplots_adjust(wspace=.15)
+
+    #Put legends for the top and bottom plots
+    ax_tot[0].legend( [im1, im2, im3], [r'w($\tau$)', 'Smoothed Dist', 'ACF'],
+                            bbox_to_anchor=(1,1.1), fontsize=11, loc='upper left' )
+
+    ax_tot[1].legend( [bin1, bin2], ['Original', 'Weighted'],
+                            bbox_to_anchor=(1, 1), fontsize=11, loc='upper left')
+
+
+    plt.savefig( output_fname, dpi=200, bbox_inches='tight' )
+
+
+    if show:
+        plt.show()
+    
+    if ax_tot is not None:
+        return ax_tot
+    else:
+        return fig, ax_tot
