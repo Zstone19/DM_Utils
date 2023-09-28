@@ -928,7 +928,7 @@ class Result:
             ax2 = [ax_top, ax_bot]
         
         else:
-            fig.add_subplot(gs_br[:, 1])
+            ax2 = fig.add_subplot(gs_br[:, 1])
 
         
         self.plot_lag_posterior(weight=weight, k=2, width=15,
