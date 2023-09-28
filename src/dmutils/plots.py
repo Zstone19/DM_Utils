@@ -926,13 +926,16 @@ class Result:
             ax_bot = plt.subplot(sub_gs[1])
             ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
             ax2 = [ax_top, ax_bot]
+            
+            ax2[0].hist(mbh_samples, bins=25)
+            ax2[1].hist(mbh_samples, bins=25)
         
         else:
             ax2 = fig.add_subplot(gs_br[:, 1])
 
         
-        self.plot_lag_posterior(weight=weight, k=2, width=15,
-                                ax=ax2, show=False)
+            self.plot_lag_posterior(weight=weight, k=2, width=15,
+                                    ax=ax2, show=False)
 
 
         
