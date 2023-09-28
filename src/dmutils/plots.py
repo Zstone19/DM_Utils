@@ -1154,110 +1154,110 @@ def plot_weight_output(lags, lag_dist,
     lagmax = np.max(lags)
     lagmin = np.min(lags)
 
-    if ( (rlim-llim) < .1*(lagmax-lagmin) ) | zoom:
+    # if ( (rlim-llim) < .1*(lagmax-lagmin) ) | zoom:
 
-        #Put inset on the right if peak is on the left and vice-versa
-        if peak < (lagmin+lagmax)/2:
-            loc=1
-        else:
-            loc=2
+    #     #Put inset on the right if peak is on the left and vice-versa
+    #     if peak < (lagmin+lagmax)/2:
+    #         loc=1
+    #     else:
+    #         loc=2
 
-        axins = inset_axes(ax_tot[1], width='45%', height='40%', loc=loc)
+    #     axins = inset_axes(ax_tot[1], width='45%', height='40%', loc=loc)
 
-        #Make connectors between the inset and the main plot
-        good_ind = np.argwhere( (lags >= llim) & (lags <= rlim) ).T[0]
-        if np.max(hist[good_ind]) < .4*ytop:
-            loc11 = 3
-            loc21 = 2
+    #     #Make connectors between the inset and the main plot
+    #     good_ind = np.argwhere( (lags >= llim) & (lags <= rlim) ).T[0]
+    #     if np.max(hist[good_ind]) < .4*ytop:
+    #         loc11 = 3
+    #         loc21 = 2
 
-            loc12 = 4
-            loc22 = 1
+    #         loc12 = 4
+    #         loc22 = 1
 
-        else:
-            loc11 = 3
-            loc21 = 3
+    #     else:
+    #         loc11 = 3
+    #         loc21 = 3
 
-            loc12 = 4
-            loc22 = 4
+    #         loc12 = 4
+    #         loc22 = 4
 
-        rect = TransformedBbox(axins.viewLim, ax_tot[1].transData)
+    #     rect = TransformedBbox(axins.viewLim, ax_tot[1].transData)
 
-        p1 = BboxConnector(axins.bbox, rect, loc1=loc11, loc2=loc21, ec='k')
-        axins.add_patch(p1)
-        p1.set_clip_on(False)
+    #     p1 = BboxConnector(axins.bbox, rect, loc1=loc11, loc2=loc21, ec='k')
+    #     axins.add_patch(p1)
+    #     p1.set_clip_on(False)
 
-        p2 = BboxConnector(axins.bbox, rect, loc1=loc12, loc2=loc22, ec='k')
-        axins.add_patch(p2)
-        p2.set_clip_on(False)
+    #     p2 = BboxConnector(axins.bbox, rect, loc1=loc12, loc2=loc22, ec='k')
+    #     axins.add_patch(p2)
+    #     p2.set_clip_on(False)
 
-        #Plot the histograms on both the main and inset axes
-        for a in [ax_tot[1], axins]:
-            bin1 = a.fill_between(lags, np.zeros_like(hist), hist, step='mid')
+    #     #Plot the histograms on both the main and inset axes
+    #     for a in [ax_tot[1], axins]:
+    #         bin1 = a.fill_between(lags, np.zeros_like(hist), hist, step='mid')
 
-            bin2 = a.fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
+    #         bin2 = a.fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
 
-            a.axvspan( llim, rlim, color='k', alpha=.1 )
-            a.set_ylim(0, ytop)
+    #         a.axvspan( llim, rlim, color='k', alpha=.1 )
+    #         a.set_ylim(0, ytop)
 
-        axins.set_xlim( llim, rlim )
-        axins.set_xticks([])
-
-
-        #If the peak is small, make box around it in the main plot
-        if np.max(hist[good_ind]) < .4*ytop:
-            y2 = np.max( hist[good_ind] )
-            axins.set_ylim(top=1.05*y2)
-
-            x1, x2 = ax_tot[1].get_xlim()
-            xmin = (llim - x1)/(x2-x1)
-            xmax = (rlim - x1)/(x2-x1)
-
-            y1_ax, y2_ax = ax_tot[1].get_ylim()
-            ymax = (1.1*y2 - y1_ax)/(y2_ax-y1_ax)
-
-            ax_tot[1].axhline( 1.05*y2, xmin, xmax, color='k', lw=1.5 )
-            ax_tot[1].axvline( llim, 0, ymax, color='k', lw=1.5 )
-            ax_tot[1].axvline( rlim, 0, ymax, color='k', lw=1.5 )
+    #     axins.set_xlim( llim, rlim )
+    #     axins.set_xticks([])
 
 
-            yticks = ax_tot[1].get_yticks()
-            m_yticks = ax_tot[1].get_yticks(minor=True)
+    #     #If the peak is small, make box around it in the main plot
+    #     if np.max(hist[good_ind]) < .4*ytop:
+    #         y2 = np.max( hist[good_ind] )
+    #         axins.set_ylim(top=1.05*y2)
 
-            good_ind = np.argwhere( yticks <= 1.05*y2 ).T[0]
-            axins.set_yticks( yticks[good_ind] )
+    #         x1, x2 = ax_tot[1].get_xlim()
+    #         xmin = (llim - x1)/(x2-x1)
+    #         xmax = (rlim - x1)/(x2-x1)
 
-            good_ind = np.argwhere( m_yticks <= 1.05*y2 ).T[0]
-            axins.set_yticks( m_yticks[good_ind], minor=True )
+    #         y1_ax, y2_ax = ax_tot[1].get_ylim()
+    #         ymax = (1.1*y2 - y1_ax)/(y2_ax-y1_ax)
 
-            axins.tick_params('both', which='major', length=7)
-            axins.tick_params('both', which='minor', length=4)
-
-        else:
-            y1, y2 = ax_tot[1].get_ylim()
-            axins.set_ylim(y1, y2)
-
-            yticks = ax_tot[1].get_yticks()
-            m_yticks = ax_tot[1].get_yticks(minor=True)
-
-            axins.set_yticks( yticks )
-            axins.set_yticks( m_yticks, minor=True )
-
-            axins.tick_params('both', which='major', length=0)
-            axins.tick_params('both', which='minor', length=0)
+    #         ax_tot[1].axhline( 1.05*y2, xmin, xmax, color='k', lw=1.5 )
+    #         ax_tot[1].axvline( llim, 0, ymax, color='k', lw=1.5 )
+    #         ax_tot[1].axvline( rlim, 0, ymax, color='k', lw=1.5 )
 
 
-        axins.set_yticklabels([])
+    #         yticks = ax_tot[1].get_yticks()
+    #         m_yticks = ax_tot[1].get_yticks(minor=True)
+
+    #         good_ind = np.argwhere( yticks <= 1.05*y2 ).T[0]
+    #         axins.set_yticks( yticks[good_ind] )
+
+    #         good_ind = np.argwhere( m_yticks <= 1.05*y2 ).T[0]
+    #         axins.set_yticks( m_yticks[good_ind], minor=True )
+
+    #         axins.tick_params('both', which='major', length=7)
+    #         axins.tick_params('both', which='minor', length=4)
+
+    #     else:
+    #         y1, y2 = ax_tot[1].get_ylim()
+    #         axins.set_ylim(y1, y2)
+
+    #         yticks = ax_tot[1].get_yticks()
+    #         m_yticks = ax_tot[1].get_yticks(minor=True)
+
+    #         axins.set_yticks( yticks )
+    #         axins.set_yticks( m_yticks, minor=True )
+
+    #         axins.tick_params('both', which='major', length=0)
+    #         axins.tick_params('both', which='minor', length=0)
+
+
+    #     axins.set_yticklabels([])
 
 
 
-    else:
-        loc=1
+    # else:
+    loc=1
 
-        bin1 = ax_tot[1].fill_between(lags, np.zeros_like(hist), hist, step='mid')
-        bin2 = ax_tot[1].fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
-        ax_tot[1].axvspan( llim, rlim, color='k', alpha=.1 )
+    bin1 = ax_tot[1].fill_between(lags, np.zeros_like(hist), hist, step='mid')
+    bin2 = ax_tot[1].fill_between(lags, np.zeros_like(hist), weight_dist*hist, step='mid', color='r', alpha=.7)
+    ax_tot[1].axvspan( llim, rlim, color='k', alpha=.1 )
 
-        ax_tot[1].set_ylim(0, ytop)
+    ax_tot[1].set_ylim(0, ytop)
 
 
     #Plot ACF
@@ -1289,7 +1289,8 @@ def plot_weight_output(lags, lag_dist,
 
     ax_tot[1].set_xlabel( r'$' + xlabel + r' [' + time_unit + ']', fontsize=15 )
 
-
+    for a in ax_tot:
+        a.set_xlim( llim-.5*(rlim-llim), rlim+.5*(rlim-llim) )
 
     ax_tot[1].set_ylabel('N', fontsize=16)
     ax_tot[1].tick_params('both', labelsize=11)
