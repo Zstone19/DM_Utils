@@ -763,9 +763,11 @@ class Result:
             line_lc = np.sum(prof, axis=1)*dV
             yl = line_lc*self.central_wl*self.bp.VelUnit/(c/1e5)
             
-            
-            lag_bounds = [np.min(tau_vals), np.max(tau_vals)]
-            wtau, lags, ntau, acf, n0 = get_weights(xc, yc, xl, yl)
+            assert np.all( np.isfinite(xc) )
+            assert np.all( np.isfinite(yc) )
+            assert np.all( np.isfinite(xl) )
+            assert np.all( np.isfinite(yl) )
+            wtau, lags, ntau, acf, n0 = get_weights(xc-xc[0], yc, xl-xl[0], yl, k=k)
 
         
         
