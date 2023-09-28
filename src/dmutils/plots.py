@@ -817,18 +817,34 @@ class Result:
         ax_tr = self.plot_clouds(colorbar=True, bounds=bounds, ax=ax_tr, show=False)
         
         
-        #BOTTOM RIGHT: MBH Posterior
-        ax_br = fig.add_subplot(gs_tot[1,2:])
+        #BOTTOM RIGHT: Posteriors
+        gs_br = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[1,2:])
+        ax1 = fig.add_subplot(gs_br[0])
+        ax2 = fig.add_subplot(gs_br[1])
         
+            #MBH
         mbh_samples = self.bp.results['sample'][:,self.bp.locate_bhmass()]/np.log(10) + 6        
-        ax_br.hist(mbh_samples, bins=25)
-        ax_br.axvline(np.median(mbh_samples), color='r', ls='--')
-        
+        ax1.hist(mbh_samples, bins=25)
+        ax1.axvline(np.median(mbh_samples), color='r', ls='--')
         
         mbh_text = r'$\log_{10}(M_{BH}/M_{\odot}) = ' + '{:.2f}'.format(np.median(mbh_samples)) + r' $'
-        ax_br.text( .05, .95, mbh_text, transform=ax_br.transAxes, fontsize=15, va='top', ha='left')
-        ax_br.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
+        ax1.text( .05, .95, mbh_text, transform=ax1.transAxes, fontsize=15, va='top', ha='left')
+        ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
+            #Lag
+        psi2d = self.bp.results['tran2d_rec']
+        tau_vals = self.bp.results['tau_rec']
+        sum2_arr = psi2d.sum(axis=2).sum(axis=1)
+        sum1_arr = np.sum( psi2d.sum(axis=2)*tau_vals, axis=1)
+        lags = sum1_arr / sum2_arr
+        
+        ax2.hist(lags, bins=25)
+        ax2.axvline(np.median(lags), color='r', ls='--')
+        
+        lag_text = r'$\tau = ' + '{:.3f}'.format(np.median(lags)) + r' $'
+        ax2.text( .05, .95, lag_text, transform=ax2.transAxes, fontsize=15, va='top', ha='left')
+        ax2.set_xlabel(r'$\tau$ [d]', fontsize=15)
+
         
         if output_fname is not None:
             plt.savefig(output_fname, bbox_inches='tight', dpi=200)
