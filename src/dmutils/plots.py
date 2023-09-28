@@ -778,21 +778,21 @@ class Result:
             lag_err_lo = med_lag - np.percentile( downsampled_posterior, 16 )
             lag_err_hi = np.percentile( downsampled_posterior, 84 ) - med_lag
             
-            ax[0].plot(lags, wtau, color='k', lw=1)
-            ax[0].plot(lags, acf, color='r', lw=1)
-            ax[0].plot(lags, smooth_dist, color='k', lw=2)
+            # ax[0].plot(lags, wtau, color='k', lw=1)
+            # ax[0].plot(lags, acf, color='r', lw=1)
+            # ax[0].plot(lags, smooth_dist, color='k', lw=2)
             
-            ax[1].hist(downsampled_posterior, bins=25)
-            ax[1].axvline(np.median(downsampled_posterior), color='r', ls='--')
-            ax[1].axvspan(min_bound, max_bound, color='k', alpha=.2)
+            # ax[1].hist(downsampled_posterior, bins=25)
+            # ax[1].axvline(np.median(downsampled_posterior), color='r', ls='--')
+            # ax[1].axvspan(min_bound, max_bound, color='k', alpha=.2)
             
             
-            # _, ax = plot_weight_output(lags, lag_posterior, 
-            #            lag_err_lo, lag_err_hi, med_lag, 
-            #            min_bound, max_bound, peak, 
-            #            wtau, smooth_dist, acf, 
-            #            zoom=True, 
-            #            ax_tot=ax, show=False, output_fname=None)
+            _, ax = plot_weight_output(lags, lag_posterior, 
+                       lag_err_lo, lag_err_hi, med_lag, 
+                       min_bound, max_bound, peak, 
+                       wtau, smooth_dist, acf, 
+                       zoom=True, 
+                       ax_tot=ax, show=False)
             
         else:            
             ax.hist(lag_posterior, bins=25)
@@ -1089,10 +1089,9 @@ def plot_weight_output(lags, lag_dist,
 
     #--------------------------------------------------------------------------------
 
-    gs = gridspec.GridSpec(1, 1)
-
     if ax_tot is None:
         fig, ax = plt.subplots(1, 2, figsize=(5,11))
+        gs = gridspec.GridSpec(1, 1)
             
         sub_gs = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs[0, 0],
                                                 height_ratios=[1, 3], hspace=0)
@@ -1301,9 +1300,6 @@ def plot_weight_output(lags, lag_dist,
     ax_tot[0].tick_params('x', labelsize=0)
     ax_tot[0].tick_params('both', which='major', length=7)
     ax_tot[0].tick_params('both', which='minor', length=3)
-
-
-    plt.subplots_adjust(wspace=.15)
 
     #Put legends for the top and bottom plots
     ax_tot[0].legend( [im1, im2, im3], [r'w($\tau$)', 'Smoothed Dist', 'ACF'],
