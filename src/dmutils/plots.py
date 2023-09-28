@@ -809,7 +809,7 @@ class Result:
         
         
         #TOP RIGHT: Cloud Positions
-        gs_tr = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[0,2:])
+        gs_tr = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[0,2:], wspace=.05)
         ax1 = fig.add_subplot(gs_tr[0])
         ax2 = fig.add_subplot(gs_tr[1], sharey=ax1, sharex=ax1)
         ax_tr = [ax1, ax2]
