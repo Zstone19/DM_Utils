@@ -885,7 +885,7 @@ class Result:
     
     
     
-    def summary2(self, bounds=[-50, 50], output_fname=None, show=False):
+    def summary2(self, bounds=[-50, 50], weight=True, output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
         gs_tot = gridspec.GridSpec(2, 4, figure=fig, wspace=.1)
@@ -926,7 +926,7 @@ class Result:
         ax_top = plt.subplot(sub_gs[0], sharex=ax_bot)
         ax2 = [ax_top, ax_bot]
         
-        self.plot_lag_posterior(weight=True, k=2, width=15,
+        self.plot_lag_posterior(weight=weight, k=2, width=15,
                                 ax=ax2, show=False)
 
 
