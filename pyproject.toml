@@ -17,6 +17,7 @@ palettable = "^3.3.3"
 bbackend = {git = "https://github.com/LiyrAstroph/BRAINS.git", rev = "master", subdirectory = "analysis"}
 tqdm = "^4.65.0"
 pypetal = ">=0.1.0"
+linmix = {git = "https://github.com/jmeyers314/linmix.git"}
 
 
 [build-system]
