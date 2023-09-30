@@ -1054,7 +1054,7 @@ class Result:
 ############################################################################### 
     
     
-def val2latex(vals):
+def val2latex(vals, n=2):
     val = np.median(vals)
     val_hi = np.percentile(vals, 84)
     val_lo = np.percentile(vals, 16)
@@ -1062,7 +1062,12 @@ def val2latex(vals):
     err_hi = val_hi - val
     err_lo = val - val_lo
     
-    return r'${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'.format(val, err_hi, err_lo)
+    if n == 0:
+        return r'${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'.format(val, err_hi, err_lo)
+    if n == 1:
+        return r'${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'.format(val, err_hi, err_lo)        
+    if n == 2:
+        return r'${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'.format(val, err_hi, err_lo)
 
 
 
