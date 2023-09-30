@@ -14,7 +14,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
     for i in range(len(fnames)):
         ex_dat = Table.read(fnames[i])
         wl = ex_dat['wavelength'].tolist()
-        prof = ex_dat['profile'].tolist()
+        prof = ex_dat['flux'].tolist()
 
 
         #Get boundaries    
