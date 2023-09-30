@@ -125,8 +125,8 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
         hb_dat = Table.read(fnames[i], format='ascii.csv')
         
         wl_rest = hb_dat['wavelength']
-        prof = hb_dat['profile']
-        prof_err = (hb_dat['err_lo'] + hb_dat['err_hi'])/2    
+        prof = hb_dat['flux']
+        prof_err = hb_dat['err']    
         
         #Only use these bounds
         mask = (wl_rest > bounds[0]) & (wl_rest < bounds[1])
