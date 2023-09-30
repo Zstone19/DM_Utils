@@ -14,7 +14,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
     for i in range(len(fnames)):
         ex_dat = Table.read(fnames[i])
         wl = ex_dat['wavelength'].tolist()
-        prof = ex_dat['flux'].tolist()
+        prof = ex_dat['profile'].tolist()
 
 
         #Get boundaries    
@@ -42,7 +42,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
 
 
-def make_input_file(fnames, central_wl, times, z, output_fname, 
+def make_input_file(fnames, tol_fnames, central_wl, times, z, output_fname, 
                     time_bounds=None, wl_bounds=None, 
                     nbin=None, tol=5e-2):
     
@@ -102,7 +102,7 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     wl_tot = []
     prof_tot = []
     err_tot = []
-    bounds = get_prof_bounds(fnames, central_wl, tol=tol)
+    bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
     
     if wl_bounds is not None:
         if wl_bounds[0] > bounds[0]:
