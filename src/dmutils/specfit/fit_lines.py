@@ -585,7 +585,7 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_lin
     # Raw broad profiles
     
     raw_br_prof = get_raw_br_prof(qi, line_name)
-    raw_br_info = Table( [qi.wave, raw_br_prof, qi.err], names=['wavelength', 'flux'])
+    raw_br_info = Table( [qi.wave, raw_br_prof, qi.err], names=['wavelength', 'flux', 'err'])
     raw_br_info.write( epoch_dir + 'raw_br_profile.csv', overwrite=True )
         
     return
