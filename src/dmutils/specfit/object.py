@@ -144,19 +144,33 @@ class Object:
         
         if line_name == 'ha':
             central_wl = 6564.61
+            line_in = 'Ha_br'
+            
         elif line_name == 'hb':
             central_wl = 4862.721
+            line_in = 'Hb_br'
+            
         elif line_name == 'mg2':
             central_wl = 2798.75
+            line_in = 'MgII_br'
+            
         elif line_name == 'c4':
             central_wl = 1550
+            line_in = 'CIV_br'
 
 
         fnames = self.res_fnames[line_name]
         
+        tol_fnames = []
+        for i in range(self.nepoch):
+            tol_fnames.append( self.main_dir + '/' + line_name + '/qsofit/epoch{:03d}/'.format(i+1) + line_in + '_profile.csv' )         
+        tol_fnames = np.array(tol_fnames)
+        
+        
         mask = (self.mjd >= xmin) & (self.mjd <= xmax)
             
-        utils.make_input_file(fnames[mask], central_wl, self.mjd[mask], self.z, output_fname, nbin=nbin, tol=tol)
+        utils.make_input_file(fnames[mask], tol_fnames[mask], 
+                             central_wl, self.mjd[mask], self.z, output_fname, nbin=nbin, tol=tol)
         self.line2d_filename = output_fname
 
         return

@@ -579,7 +579,208 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_lin
     cont_info = Table( [qi.wave, continuum], names=['wavelength', 'flux'])
     cont_info.write( epoch_dir + 'continuum.csv', overwrite=True )
         
+        
+    ####################################################################
+    ####################################################################
+    # Raw broad profiles
+    
+    raw_br_prof = get_raw_br_prof(qi, line_name)
+    raw_br_info = Table( [qi.wave, raw_br_prof, qi.err], names=['wavelength', 'flux', 'err'])
+    raw_br_info.write( epoch_dir + 'raw_br_profile.csv', overwrite=True )
+        
     return
+
+
+
+def get_raw_br_prof(qi, line_name):
+
+    #Get results    
+    gauss_result_tot = qi.gauss_result_all
+    gauss_result = qi.gauss_result[::2]
+    gauss_names = qi.gauss_result_name[::2]
+    
+    ####################################################################
+    ####################################################################
+    
+    if line_name == 'hb':
+        
+        #Get Hbeta narrow profile
+        pvals = []
+        for p in range( len(gauss_result)//3 ):
+            if (gauss_names[3*p + 2][:2] != 'Hb') or (gauss_names[3*p + 2][3:5] != 'na'):
+                continue
+            
+            pvals.append(p)
+        
+        profiles = []
+        for i in range(gauss_result_tot.shape[0]):
+
+            profile = np.zeros_like( qi.wave )
+            for p in pvals:
+                profile += qi.Onegauss( np.log(qi.wave), gauss_result_tot[i, 3*p:3*(p+1)] )
+        
+            profiles.append(profile)
+        
+        profiles = np.vstack(profiles)        
+        na_prof = np.median(profiles, axis=0)
+        
+        #Get continuum
+        continuum = qi.f_conti_model
+        
+        #Get OIII
+        o3_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:4] != 'OIII':
+                continue
+            
+            o3_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+            
+        
+        #Get HeII
+        he2_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:4] != 'HeII':
+                continue
+            
+            he2_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+        
+        
+        raw_prof = qi.flux - (na_prof + continuum + o3_prof + he2_prof)
+        
+        
+    ####################################################################
+    ####################################################################
+        
+    if line_name == 'ha':
+        
+        #Get Halpha narrow profile
+        pvals = []
+        for p in range( len(gauss_result)//3 ):
+            if (gauss_names[3*p + 2][:2] != 'Ha') or (gauss_names[3*p + 2][3:5] != 'na'):
+                continue
+            
+            pvals.append(p)
+            
+        profiles = []
+        for i in range(gauss_result_tot.shape[0]):
+            
+            profile = np.zeros_like( qi.wave )
+            for p in pvals:
+                profile += qi.Onegauss( np.log(qi.wave), gauss_result_tot[i, 3*p:3*(p+1)] )
+        
+            profiles.append(profile)
+            
+        profiles = np.vstack(profiles)
+        na_prof = np.median(profiles, axis=0)
+        
+        
+        #Get continuum
+        continuum = qi.f_conti_model
+        
+        #Get NII
+        n2_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:3] != 'NII':
+                continue
+            
+            n2_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+            
+        
+        #Get SII
+        s2_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:3] != 'SII':
+                continue
+            
+            s2_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+            
+        
+        raw_prof = qi.flux - (na_prof + continuum + n2_prof + s2_prof)
+    
+
+    ####################################################################
+    ####################################################################
+    
+    if line_name == 'mg2':
+        
+        #Get MgII narrow profile
+        pvals = []
+        for p in range( len(gauss_result)//3 ):
+            if (gauss_names[3*p + 2][:4] != 'mg2') or (gauss_names[3*p + 2][5:7] != 'na'):
+                continue
+            
+            pvals.append(p)
+            
+        profiles = []
+        for i in range(gauss_result_tot.shape[0]):
+                
+            profile = np.zeros_like( qi.wave )
+            for p in pvals:
+                profile += qi.Onegauss( np.log(qi.wave), gauss_result_tot[i, 3*p:3*(p+1)] )
+        
+            profiles.append(profile)
+                
+        profiles = np.vstack(profiles)
+        na_prof = np.median(profiles, axis=0)
+        
+        
+        #Get continuum
+        continuum = qi.f_conti_model
+        
+        raw_prof = qi.flux - (na_prof + continuum)    
+    
+
+    ####################################################################
+    ####################################################################
+        
+    if line_name == 'c4':
+        
+        #Get CIV narrow profile
+        pvals = []
+        for p in range( len(gauss_result)//3 ):
+            if (gauss_names[3*p + 2][:4] != 'c4') or (gauss_names[3*p + 2][5:7] != 'na'):
+                continue
+            
+            pvals.append(p)
+            
+        profiles = []
+        for i in range(gauss_result_tot.shape[0]):
+                
+            profile = np.zeros_like( qi.wave )
+            for p in pvals:
+                profile += qi.Onegauss( np.log(qi.wave), gauss_result_tot[i, 3*p:3*(p+1)] )
+        
+            profiles.append(profile)
+                
+        profiles = np.vstack(profiles)
+        na_prof = np.median(profiles, axis=0)
+        
+        
+        #Get continuum
+        continuum = qi.f_conti_model
+        
+        #Get HeII
+        he2_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:4] != 'HeII':
+                continue
+            
+            he2_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+            
+        
+        #Get OIII
+        o3_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:4] != 'OIII':
+                continue
+            
+            o3_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+        
+
+        raw_prof = qi.flux - (na_prof + continuum + he2_prof + o3_prof)    
+    
+    
+    return raw_prof
 
 
 ###############################################################################################

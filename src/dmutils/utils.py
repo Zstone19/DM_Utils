@@ -42,7 +42,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
 
 
-def make_input_file(fnames, central_wl, times, z, output_fname, 
+def make_input_file(fnames, tol_fnames, central_wl, times, z, output_fname, 
                     time_bounds=None, wl_bounds=None, 
                     nbin=None, tol=5e-2):
     
@@ -102,7 +102,7 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     wl_tot = []
     prof_tot = []
     err_tot = []
-    bounds = get_prof_bounds(fnames, central_wl, tol=tol)
+    bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
     
     if wl_bounds is not None:
         if wl_bounds[0] > bounds[0]:
@@ -125,8 +125,8 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
         hb_dat = Table.read(fnames[i], format='ascii.csv')
         
         wl_rest = hb_dat['wavelength']
-        prof = hb_dat['profile']
-        prof_err = (hb_dat['err_lo'] + hb_dat['err_hi'])/2    
+        prof = hb_dat['flux']
+        prof_err = hb_dat['err']    
         
         #Only use these bounds
         mask = (wl_rest > bounds[0]) & (wl_rest < bounds[1])
