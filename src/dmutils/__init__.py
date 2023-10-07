@@ -1,5 +1,3 @@
-from .plots import Result
-from .plot_multiple import *
-from .utils import *
+from .input import *
 
-__all__ = ["dmutils.plots", "dmutils.plot_multiple", "dmutils.utils"]
+__all__ = ["dmutils.input"]
