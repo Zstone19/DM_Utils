@@ -7,7 +7,7 @@ from matplotlib import gridspec
 from astropy.table import Table
 from astropy.io import ascii
 import astropy.constants as const
-from dmutils.plots import val2latex
+from dmutils.result import val2latex
 
 
 def isnone(arr):    
