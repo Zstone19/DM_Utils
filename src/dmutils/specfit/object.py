@@ -1,11 +1,10 @@
 import numpy as np
 from astropy.table import Table
 
-import os
 import glob
 import gzip
 
-from dmutils.src.dmutils import input
+from dmutils import input
 
 class Object:
     
