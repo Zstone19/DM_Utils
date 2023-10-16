@@ -142,7 +142,8 @@ def get_cont_lc(res):
 ############################################################################################################
 
 def plot_binned_lcs(res, wl_bins,
-                    psi_xlim=None, lag_nbin=25,
+                    psi_xlim=None, lag_xlim=None,
+                    lag_nbin=25,
                     show=True, output_fname=None):
     
     
@@ -202,7 +203,7 @@ def plot_binned_lcs(res, wl_bins,
             ax2.plot(xl-xl[0], yrecl[j,:,i], color=colors[i%9], alpha=0.05, lw=.5)
         
         ax1.set_xlim(psi_xlim)
-        ax3.set_xlim(0, 150)
+        ax3.set_xlim(lag_xlim)
         ax3.set_ylim(0, 1) 
         for a in [ax1, ax2, ax3]:
             a.set_yticklabels([])
