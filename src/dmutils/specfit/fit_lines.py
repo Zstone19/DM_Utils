@@ -321,7 +321,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
         poly = False
         
     masks = True
-    if (line_name is None) or (line_name == 'ha'):
+    if (line_name is None) or (line_name in ['ha', 'c4']):
         masks = False
         
         
