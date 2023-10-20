@@ -134,21 +134,39 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
     elif line_name is None:
         wave_range = None
 
-    
-    qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
-                and_mask_in=and_mask, or_mask_in=or_mask)
-    
-    qi.Fit(name='Object', nsmooth=1, deredden=True, 
-            and_mask=use_and_mask, or_mask=use_or_mask,
-            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-            decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-            Fe_uv_op=True, poly=poly,
-            rej_abs_conti=False, rej_abs_line=rej_abs_line,
-            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-            Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-            save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-            save_fits_name=None, save_fits_path=None, verbose=False,
-            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+    try:
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)
+        
+        qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                Fe_uv_op=True, poly=poly,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+    except Exception:
+        use_and_mask = False
+        use_or_mask = False
+        
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)
+        
+        qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                Fe_uv_op=True, poly=poly,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
     
     
     if linefit: 
@@ -157,21 +175,39 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
         n = 0
         while rerun:
             
-            qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
-                        and_mask_in=and_mask, or_mask_in=or_mask)
             
-            qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                    and_mask=use_and_mask, or_mask=use_or_mask,
-                    reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-                    decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-                    Fe_uv_op=True, poly=poly,
-                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                    Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                    save_fits_name=None, save_fits_path=None, verbose=False,
-                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
-            
+            try:
+                qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                            and_mask_in=and_mask, or_mask_in=or_mask)
+                
+                qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                        and_mask=use_and_mask, or_mask=use_or_mask,
+                        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                        decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                        Fe_uv_op=True, poly=poly,
+                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                        Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                        save_fits_name=None, save_fits_path=None, verbose=False,
+                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+            except Exception:
+                qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                            and_mask_in=and_mask, or_mask_in=or_mask)
+                
+                qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                        and_mask=use_and_mask, or_mask=use_or_mask,
+                        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                        decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                        Fe_uv_op=True, poly=poly,
+                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                        Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                        save_fits_name=None, save_fits_path=None, verbose=False,
+                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+
+                             
             
             rerun = check_rerun(qi, line_name)
 
