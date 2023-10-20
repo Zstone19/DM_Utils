@@ -320,11 +320,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     if line_name is not None:
         poly = False
         
-    masks = True
-    if (line_name is None) or (line_name in ['ha', 'c4']):
-        masks = False
-        
-        
+    masks = True        
     nburn = 100
     nsamp = 200
     nthin = 10
@@ -336,17 +332,31 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
         
         
         
+    try:
+        qi.Fit(name=name, nsmooth=1, deredden=True, 
+                and_mask=masks, or_mask=masks,
+            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+            decompose_host=False, npca_gal=5, npca_qso=20, 
+            Fe_uv_op=True, poly=poly,
+            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
+            Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
+            save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
+            save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
+    except:
+        masks = False
+        
+        qi.Fit(name=name, nsmooth=1, deredden=True, 
+                and_mask=masks, or_mask=masks,
+            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+            decompose_host=False, npca_gal=5, npca_qso=20, 
+            Fe_uv_op=True, poly=poly,
+            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
+            Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
+            save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
+            save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
-    qi.Fit(name=name, nsmooth=1, deredden=True, 
-            and_mask=masks, or_mask=masks,
-           reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-           decompose_host=False, npca_gal=5, npca_qso=20, 
-           Fe_uv_op=True, poly=poly,
-           rej_abs_conti=False, rej_abs_line=rej_abs_line,
-           MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
-           Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
-           save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
-           save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
 
     rerun1 = check_bad_run(qi, line_name)
