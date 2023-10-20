@@ -262,18 +262,37 @@ def host_job(ind, obj, qsopar_dir, line_name,
     qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                 and_mask_in=and_mask, or_mask_in=or_mask)
     
-    qi.Fit(name='Object', nsmooth=1, deredden=True, 
-            and_mask=use_and_mask, or_mask=use_or_mask,
-            reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-            decompose_host=False,
-            Fe_uv_op=True, poly=False,
-            rej_abs_conti=False, rej_abs_line=rej_abs_line,
-            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-            Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-            Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-            save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-            save_fits_name=None, save_fits_path=None, verbose=False,
-            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+    
+    try:
+        qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                decompose_host=False,
+                Fe_uv_op=True, poly=False,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+    except:
+        use_and_mask = False
+        use_or_mask = False
+        
+        qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                decompose_host=False,
+                Fe_uv_op=True, poly=False,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})        
+        
     
     
     #Rerun until line fit is good
@@ -286,18 +305,36 @@ def host_job(ind, obj, qsopar_dir, line_name,
             qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                         and_mask_in=and_mask, or_mask_in=or_mask)
             
-            qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                    and_mask=use_and_mask, or_mask=use_or_mask,
-                    reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                    decompose_host=False, 
-                    Fe_uv_op=True, poly=False,
-                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                    Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                    Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                    save_fits_name=None, save_fits_path=None, verbose=False,
-                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+            try:
+                qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                        and_mask=use_and_mask, or_mask=use_or_mask,
+                        reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                        decompose_host=False, 
+                        Fe_uv_op=True, poly=False,
+                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                        Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                        Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                        save_fits_name=None, save_fits_path=None, verbose=False,
+                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+            except:
+                use_and_mask = False
+                use_or_mask = False
+                
+                qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                        and_mask=use_and_mask, or_mask=use_or_mask,
+                        reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                        decompose_host=False,
+                        Fe_uv_op=True, poly=False,
+                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                        Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                        Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                        save_fits_name=None, save_fits_path=None, verbose=False,
+                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})  
+
 
             rerun = check_rerun(qi, line_name)
 
