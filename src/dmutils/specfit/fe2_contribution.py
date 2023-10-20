@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import splrep, splev
+from scipy.special import erf
 from astropy.table import Table
 
 import multiprocessing as mp
@@ -492,23 +493,9 @@ def find_bad_fits(fit_fnames, param_fname, line_name, method='prof', nsig=3):
     ##########################################################
     #METHOD 2 - Deviation from median FeII parameters
     
-    if nsig == 1:
-        plo = 16
-        phi = 84
-    elif nsig == 2:
-        plo = 2.5
-        phi = 97.5
-    elif nsig == 3:
-        plo = 0.15
-        phi = 99.85
-    elif nsig == 4:
-        plo = 0.02
-        phi = 99.98
-    elif nsig == 5:
-        plo = 0.003
-        phi = 99.997
-        
-        
+    width = erf(nsig/np.sqrt(2))
+    plo = 100*(.5 - width/2)
+    phi = 100*(.5 + width/2)
     
     param_dat = Table.read(param_fname, format='ascii')
     assert len(param_dat) == nepoch
