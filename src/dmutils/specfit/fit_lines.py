@@ -326,13 +326,12 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     nthin = 10
     
 
-    qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
-                and_mask_in=and_mask, or_mask_in=or_mask)
-    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix
-        
-        
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix        
         
     try:
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)
+        
         qi.Fit(name=name, nsmooth=1, deredden=True, 
                 and_mask=masks, or_mask=masks,
             reject_badpix=False, wave_range=wave_range, wave_mask=None, 
@@ -345,6 +344,9 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
             save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
     except:
         masks = False
+        
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)
         
         qi.Fit(name=name, nsmooth=1, deredden=True, 
                 and_mask=masks, or_mask=masks,

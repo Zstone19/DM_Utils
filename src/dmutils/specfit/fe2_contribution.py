@@ -257,13 +257,12 @@ def host_job(ind, obj, qsopar_dir, line_name,
                                                             host_dir + 'best_host_flux.dat', 
                                                             z=obj.z)
 
-
-
-    qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
-                and_mask_in=and_mask, or_mask_in=or_mask)
     
     
     try:
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)    
+    
         qi.Fit(name='Object', nsmooth=1, deredden=True, 
                 and_mask=use_and_mask, or_mask=use_or_mask,
                 reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
@@ -279,6 +278,9 @@ def host_job(ind, obj, qsopar_dir, line_name,
     except Exception:
         use_and_mask = False
         use_or_mask = False
+        
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                and_mask_in=and_mask, or_mask_in=or_mask)
         
         qi.Fit(name='Object', nsmooth=1, deredden=True, 
                 and_mask=use_and_mask, or_mask=use_or_mask,
@@ -302,10 +304,10 @@ def host_job(ind, obj, qsopar_dir, line_name,
         n = 0
         while rerun:
             
-            qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
-                        and_mask_in=and_mask, or_mask_in=or_mask)
-            
             try:
+                qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                            and_mask_in=and_mask, or_mask_in=or_mask)
+                
                 qi.Fit(name='Object', nsmooth=1, deredden=True, 
                         and_mask=use_and_mask, or_mask=use_or_mask,
                         reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
@@ -321,6 +323,9 @@ def host_job(ind, obj, qsopar_dir, line_name,
             except Exception:
                 use_and_mask = False
                 use_or_mask = False
+                
+                qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                            and_mask_in=and_mask, or_mask_in=or_mask)
                 
                 qi.Fit(name='Object', nsmooth=1, deredden=True, 
                         and_mask=use_and_mask, or_mask=use_or_mask,
