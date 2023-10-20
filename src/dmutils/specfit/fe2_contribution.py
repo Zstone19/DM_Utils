@@ -276,7 +276,7 @@ def host_job(ind, obj, qsopar_dir, line_name,
                 save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
                 save_fits_name=None, save_fits_path=None, verbose=False,
                 kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
-    except:
+    except Exception:
         use_and_mask = False
         use_or_mask = False
         
