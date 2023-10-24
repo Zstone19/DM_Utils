@@ -521,7 +521,7 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_lin
         #Get MgII broad profiles (need to load all MCMC samples)
         pvals = []
         for p in range( len(gauss_result)//3 ):
-            if (gauss_names[3*p + 2][:4] != 'mg2') or (gauss_names[3*p + 2][5:7] != 'br'):
+            if (gauss_names[3*p + 2][:4] != 'MgII') or (gauss_names[3*p + 2][5:7] != 'br'):
                 continue
             
             pvals.append(p)
@@ -556,7 +556,7 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_lin
         #Get MgII broad profiles (need to load all MCMC samples)
         pvals = []
         for p in range( len(gauss_result)//3 ):
-            if (gauss_names[3*p + 2][:4] != 'c4') or (gauss_names[3*p + 2][5:7] != 'br'):
+            if (gauss_names[3*p + 2][:4] != 'CIV') or (gauss_names[3*p + 2][5:7] != 'br'):
                 continue
             
             pvals.append(p)
@@ -718,7 +718,7 @@ def get_raw_br_prof(qi, line_name):
         #Get MgII narrow profile
         pvals = []
         for p in range( len(gauss_result)//3 ):
-            if (gauss_names[3*p + 2][:4] != 'mg2') or (gauss_names[3*p + 2][5:7] != 'na'):
+            if (gauss_names[3*p + 2][:4] != 'MgII') or (gauss_names[3*p + 2][5:7] != 'na'):
                 continue
             
             pvals.append(p)
@@ -750,7 +750,7 @@ def get_raw_br_prof(qi, line_name):
         #Get CIV narrow profile
         pvals = []
         for p in range( len(gauss_result)//3 ):
-            if (gauss_names[3*p + 2][:4] != 'c4') or (gauss_names[3*p + 2][5:7] != 'na'):
+            if (gauss_names[3*p + 2][:3] != 'CIV') or (gauss_names[3*p + 2][4:6] != 'na'):
                 continue
             
             pvals.append(p)
