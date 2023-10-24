@@ -556,7 +556,7 @@ def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_lin
         #Get MgII broad profiles (need to load all MCMC samples)
         pvals = []
         for p in range( len(gauss_result)//3 ):
-            if (gauss_names[3*p + 2][:4] != 'CIV') or (gauss_names[3*p + 2][5:7] != 'br'):
+            if (gauss_names[3*p + 2][:3] != 'CIV') or (gauss_names[3*p + 2][4:6] != 'br'):
                 continue
             
             pvals.append(p)
