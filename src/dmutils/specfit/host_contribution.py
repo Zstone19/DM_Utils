@@ -335,7 +335,7 @@ def get_best_host_flux(obj, output_dir, line_name=None, method='snr'):
         wl_max_arr = []
 
         #Get all host 
-        for epoch in np.array(range(90))+1:
+        for epoch in np.array(range(obj.nepoch))+1:
             wl, flux = np.loadtxt(output_dir + 'host_flux_epoch{:03d}.dat'.format(epoch), unpack=True, skiprows=1)
             
             wl_arr.append(wl)
