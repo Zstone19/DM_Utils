@@ -328,7 +328,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     
     
     if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
-        print(obj.z, qi.lam[0]/(1+obj.z), qi.lam[-1]/(1+obj.z) )
+        print(obj.z, lam[0]/(1+obj.z), lam[-1]/(1+obj.z) )
         masks = False     
         
     try:
