@@ -270,8 +270,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     print('Fitting epoch {}'.format(ind+1))
 
     if line_name not in ['mg2', 'c4']:
-        assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'
-
+        assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'        
 
     lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
     flux = np.array(obj.table_arr[ind]['corrected_flux'])
@@ -285,6 +284,9 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     plateid = obj.plateid[ind]
     fiberid = obj.fiberid[ind]
     
+    
+    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
+        print(obj.z, lam[0]/(1+obj.z), lam[-1]/(1+obj.z) )
     
     
     decompose_host = True
