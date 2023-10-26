@@ -285,10 +285,6 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     fiberid = obj.fiberid[ind]
     
     
-    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
-        print(obj.z, lam[0]/(1+obj.z), lam[-1]/(1+obj.z) )
-    
-    
     decompose_host = True
     if line_name is None:
         wave_range = None
@@ -362,6 +358,8 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
             save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
 
+    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
+        print(obj.z, qi.lam[0]/(1+obj.z), qi.lam[-1]/(1+obj.z) )
 
     rerun1 = check_bad_run(qi, line_name)
     rerun = rerun1
