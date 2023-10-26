@@ -324,7 +324,12 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     nthin = 10
     
 
-    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix        
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix   
+    
+    
+    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
+        print(obj.z, qi.lam[0]/(1+obj.z), qi.lam[-1]/(1+obj.z) )
+        masks = False     
         
     try:
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
@@ -357,9 +362,6 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
             save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
             save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
-
-    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
-        print(obj.z, qi.lam[0]/(1+obj.z), qi.lam[-1]/(1+obj.z) )
 
     rerun1 = check_bad_run(qi, line_name)
     rerun = rerun1
