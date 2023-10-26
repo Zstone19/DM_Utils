@@ -291,13 +291,17 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     elif line_name == 'mg2':
         wave_range = np.array([2200, 3090])
         decompose_host = False
+        center = 2798
     elif line_name == 'c4':
         wave_range = np.array([1445, 1705])
         decompose_host = False
+        center = 1549
     elif line_name == 'hb':
         wave_range = np.array([4435, 5535])
+        center = 4861
     elif line_name == 'ha':
         wave_range = np.array([6100, 7000])
+        center = 6563
 
     
     
@@ -323,13 +327,18 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     nsamp = 200
     nthin = 10
     
+    #Don't use masks if they remove the line
+    if line_name is not None:
+        new_lam = lam.copy()
+        mask_ind = np.where( (and_mask == 0) & (and_mask == 0) , True, False)
+        new_lam = new_lam[mask_ind]
+        
+        if new_lam[0] > center:
+            masks = False
 
-    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix   
     
-    
-    if (obj.rmid == 86) & (obj.epochs[ind] == 11) & (line_name == 'c4'):
-        print(obj.z, lam[0]/(1+obj.z), lam[-1]/(1+obj.z) )
-        masks = False     
+
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix    
         
     try:
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
