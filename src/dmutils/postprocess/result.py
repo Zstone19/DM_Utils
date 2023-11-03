@@ -101,7 +101,7 @@ class Result:
                     ax=None, output_fname=None, show=False):
 
         c = const.c.cgs.value
-        ff = 1.5
+        ff = 2
         
         idx, _ = self.bp.find_max_prob()
         model_flux = self.bp.results['line2d_rec'][idx]
@@ -210,7 +210,7 @@ class Result:
         #############################################################
         #Aesthetics
         
-        ax[0].set_ylabel('MJD', fontsize=13*ff)
+        ax[0].set_ylabel('MJD', fontsize=13*ff, labelpad=10)
         ax[0].set_title('Data', fontsize=16*ff)
         ax[1].set_title('Model', fontsize=16*ff)
         
@@ -218,9 +218,10 @@ class Result:
             ax[2].set_title('Residuals', fontsize=16*ff)
         
         for a in ax:
-            a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=13*ff)
+            a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=11*ff, labelpad=10)
             a.tick_params('both', which='major', length=6)
             a.tick_params('both', which='minor', length=3)
+            a.tick_params('both', labelsize=10*ff)
             
         for a in ax[1:]:
             a.tick_params('y', which='both', labelsize=0)
@@ -233,7 +234,7 @@ class Result:
                 a.set_xlim(xbounds)
         
         
-        plt.subplots_adjust(wspace=0.05)
+        #plt.subplots_adjust(wspace=0.05)
         
         if include_res:
             cbar = plt.colorbar(im, ax=ax[2], pad=0.01, aspect=15 )
@@ -296,11 +297,12 @@ class Result:
         if xbounds is not None:
             ax.set_xlim(xbounds[0], xbounds[1])
 
-        ax.set_ylabel('Lag [d]', fontsize=13)
-        ax.set_xlabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=13)
+        ax.set_ylabel('Lag [d]', fontsize=16)
+        ax.set_xlabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=16)
 
-        plt.colorbar(im, ax=ax, pad=.01, aspect=15)
-        ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=15)
+        cbar = plt.colorbar(im, ax=ax, pad=.01, aspect=15)
+        cbar.ax.tick_params('both', labelsize=14)
+        ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
 
         ax.axvline(0, color='c', ls='--', lw=2)
 
@@ -308,6 +310,7 @@ class Result:
         ax.tick_params('both', which='both', color='w', width=1.5)
         ax.tick_params('both', which='major', length=6)
         ax.tick_params('both', which='minor', length=3)
+        ax.tick_params('both', labelsize=14)
                 
 
         if output_fname is not None:
@@ -397,19 +400,26 @@ class Result:
                     marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
         ax[0].set_xlabel('x [lt-d]', fontsize=18)
         ax[0].set_ylabel('z [lt-d]', fontsize=18)
-        ax[0].set_title('Side View', fontsize=20)
+        ax[0].set_title('Side View', fontsize=22)
         
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
         ax[1].set_xlabel('y [lt-d]', fontsize=18)
-        ax[1].set_title('Observer POV', fontsize=20)
+        ax[1].set_title('Observer POV', fontsize=22)
 
         if bounds is not None:
             for a in ax:
                 a.set_xlim(bounds)
                 a.set_ylim(bounds)
-                
+
+
+        for a in ax:
+            a.tick_params('both', which='major', length=8)
+            a.tick_params('both', which='minor', length=3)
+            a.tick_params('x', which='both', labelsize=12)
+
+        ax[0].tick_params('y', which='both', labelsize=14)
         ax[1].tick_params('y', which='both', labelsize=0)
         
         if ax is None:
@@ -431,8 +441,8 @@ class Result:
             sm = ScalarMappable(norm=norm, cmap='coolwarm')
             cbar = plt.colorbar(sm, ax=ax, pad=.01, aspect=15)
             
-            cbar.ax.set_ylabel(r'Velocity [$\rm 10^{3} \; km \; s^{-1} $]', fontsize=15, rotation=270, labelpad=25)
-
+            cbar.ax.set_ylabel(r'Velocity [$\rm 10^{3} \; km \; s^{-1} $]', fontsize=17, rotation=270, labelpad=25)
+            cbar.ax.tick_params('both', labelsize=14)
         
         if output_fname is not None:
             plt.savefig(output_fname, bbox_inches='tight', dpi=200)
@@ -570,10 +580,10 @@ class Result:
         
         
 
-    def lc_fits_plot(self, ax=None, output_fname=None, show=False):
+    def lc_fits_plot(self, inflate_err=False, ax=None, output_fname=None, show=False):
         
         c = const.c.cgs.value
-        ff = 1.5
+        ff = 2
         
         if ax is None:
             _, ax = plt.subplots(2, figsize=(10, 4), sharex=True) 
@@ -628,6 +638,9 @@ class Result:
         rec_line_lc = np.sum(self.bp.results['line2d_rec'], axis=2)*dV
         yout_lo, yout_med, yout_hi = np.percentile(rec_line_lc, [16, 50, 84], axis=0) * self.central_wl*self.bp.VelUnit/(c/1e5)
         
+        if inflate_err:
+            yerrin_mask = (yerrin < .05*yout_med)
+            yerrin[yerrin_mask] = .05*yout_med
 
         lines, caps, bars = ax[1].errorbar(xin, yin, yerrin, fmt='.k', ms=1.5)
         [bar.set_alpha(.3) for bar in bars]
@@ -638,21 +651,23 @@ class Result:
         
         ######################################################
         
-        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=16*ff, rotation=270, labelpad=20)
-        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=16*ff, rotation=270, labelpad=20)
+        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=14*ff, rotation=270, labelpad=30)
+        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=14*ff, rotation=270, labelpad=30)
         ax[-1].set_xlabel('MJD', fontsize=15*ff)
         
         for a in ax:
-            a.tick_params('both', which='major', length=6)
+            a.tick_params('both', which='major', length=8)
             a.tick_params('both', which='minor', length=3)
             a.tick_params('both', which='major', labelsize=10*ff)
             
             a.set_xlim(left=xmin)
             a.yaxis.set_label_position("right")
             a.tick_params('y', which='both', labelleft=False, labelright=True)
+            
+        ax[0].tick_params('x', which='both', labelbottom=False)
         
 
-        plt.subplots_adjust(hspace=0)
+        #plt.subplots_adjust(hspace=0)
         
         fig = plt.gcf()
         fig.align_ylabels(ax)

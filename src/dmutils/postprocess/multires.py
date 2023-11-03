@@ -124,8 +124,8 @@ def plot_mult(res_arr, res_names=None,
         assert nres == len(arr)
     
 
-    fig = plt.figure(figsize=(15, 5*nres))
-    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.3, wspace=.2, width_ratios=[1, 1, 1])
+    fig = plt.figure(figsize=(20, 5*nres))
+    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.35, wspace=.2, width_ratios=[1, 1, 1])
     
     for i, res in enumerate(res_arr):
         gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
@@ -144,12 +144,7 @@ def plot_mult(res_arr, res_names=None,
                                              show=False)
     
         ytxt = 1 - (2*i + 1)/(2*nres)
-        if ytxt < .5:
-            ytxt += 1/2/nres/2
-        elif ytxt > .5:
-            ytxt -= 1/2/nres/2
-        
-        plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
+        plt.figtext(.94, ytxt, res_names[i], fontsize=30, rotation=270, va='center', ha='center')
 
 
     if output_fname is not None:
@@ -167,7 +162,7 @@ def plot_mult(res_arr, res_names=None,
 
 
 
-def plot_mult_fitres(res_arr, res_names=None, include_res=False,
+def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=False,
                      xbounds_arr=None, output_fname=None, show=False):
     
     
@@ -201,44 +196,39 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False,
     if include_res:
         gs_tot = gridspec.GridSpec(nres, 6, figure=fig, hspace=.3, wspace=.2)
     else:
-        gs_tot = gridspec.GridSpec(nres, 4, figure=fig, hspace=.3, wspace=.2)
+        gs_tot = gridspec.GridSpec(nres, 4, figure=fig, hspace=.5, wspace=.2)
     
     for i, res in enumerate(res_arr):
         
         if include_res:
-            gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.08)
+            gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.05)
             ax1 = fig.add_subplot(gs_l[0])
             ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
             ax3 = fig.add_subplot(gs_l[2], sharey=ax1, sharex=ax1)
             ax_2d = [ax1, ax2, ax3]
         else:
-            gs_l = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
+            gs_l = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.09)
             ax1 = fig.add_subplot(gs_l[0])
             ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
             ax_2d = [ax1, ax2]
 
         if include_res:
-            gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,3:], wspace=.08)
+            gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,3:], wspace=.08, hspace=0)
             ax1 = fig.add_subplot(gs_r[0])
             ax2 = fig.add_subplot(gs_r[1], sharex=ax1)
             ax_lc = [ax1, ax2]
         else:
-            gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,2:], wspace=.08)
+            gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,2:], wspace=.08, hspace=0)
             ax1 = fig.add_subplot(gs_r[0])
             ax2 = fig.add_subplot(gs_r[1], sharex=ax1)
             ax_lc = [ax1, ax2]
         
         ax_2d = res.line2d_plot(include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
-        ax_lc = res.lc_fits_plot(ax=ax_lc, show=False)
+        ax_lc = res.lc_fits_plot(inflate_err=inflate_err, ax=ax_lc, show=False)
         
             
         ytxt = 1 - (2*i + 1)/(2*nres)
-        if ytxt < .5:
-            ytxt += 1/2/nres/2
-        elif ytxt > .5:
-            ytxt -= 1/2/nres/2
-        
-        plt.figtext(.95, ytxt, res_names[i], fontsize=20, rotation=270, va='center', ha='center')
+        plt.figtext(.97, ytxt, res_names[i], fontsize=30, rotation=270, va='center', ha='center')
 
 
     if output_fname is not None:
