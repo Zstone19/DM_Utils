@@ -101,6 +101,7 @@ class Result:
                     ax=None, output_fname=None, show=False):
 
         c = const.c.cgs.value
+        ff = 1.5
         
         idx, _ = self.bp.find_max_prob()
         model_flux = self.bp.results['line2d_rec'][idx]
@@ -209,15 +210,15 @@ class Result:
         #############################################################
         #Aesthetics
         
-        ax[0].set_ylabel('MJD', fontsize=13)
-        ax[0].set_title('Data', fontsize=16)
-        ax[1].set_title('Model', fontsize=16)
+        ax[0].set_ylabel('MJD', fontsize=13*ff)
+        ax[0].set_title('Data', fontsize=16*ff)
+        ax[1].set_title('Model', fontsize=16*ff)
         
         if include_res:
-            ax[2].set_title('Residuals', fontsize=16)
+            ax[2].set_title('Residuals', fontsize=16*ff)
         
         for a in ax:
-            a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=13)
+            a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=13*ff)
             a.tick_params('both', which='major', length=6)
             a.tick_params('both', which='minor', length=3)
             
@@ -572,6 +573,7 @@ class Result:
     def lc_fits_plot(self, ax=None, output_fname=None, show=False):
         
         c = const.c.cgs.value
+        ff = 1.5
         
         if ax is None:
             _, ax = plt.subplots(2, figsize=(10, 4), sharex=True) 
@@ -636,14 +638,14 @@ class Result:
         
         ######################################################
         
-        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=16, rotation=270, labelpad=20)
-        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=16, rotation=270, labelpad=20)
-        ax[-1].set_xlabel('MJD', fontsize=15)
+        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=16*ff, rotation=270, labelpad=20)
+        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=16*ff, rotation=270, labelpad=20)
+        ax[-1].set_xlabel('MJD', fontsize=15*ff)
         
         for a in ax:
             a.tick_params('both', which='major', length=6)
             a.tick_params('both', which='minor', length=3)
-            a.tick_params('both', which='major', labelsize=10)
+            a.tick_params('both', which='major', labelsize=10*ff)
             
             a.set_xlim(left=xmin)
             a.yaxis.set_label_position("right")
