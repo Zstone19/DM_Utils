@@ -97,6 +97,7 @@ class Result:
 
 
     def line2d_plot(self, gaussian_smooth=False, gaussian_sig=[0,0], xbounds=None,
+                    include_res=True,
                     ax=None, output_fname=None, show=False):
 
         c = const.c.cgs.value
@@ -110,7 +111,13 @@ class Result:
 
 
         if ax is None:
-            fig, ax = plt.subplots(1, 3, figsize=(10, 3), sharey=True, sharex=True)
+            
+            if include_res:
+                Ncol = 3
+            else:
+                Ncol = 2
+                
+            fig, ax = plt.subplots(1, Ncol, figsize=(10, Ncol), sharey=True, sharex=True)
 
 
         #############################################################
@@ -186,17 +193,18 @@ class Result:
         #############################################################
         #Residuals
         
-        prof_err = self.bp.data['line2d_data']['profile'][:, :, 2].copy()
-        line_mean_err = np.mean(prof_err)
-        
-        sample = self.bp.results['sample']
-        idx_line =  np.nonzero(self.bp.para_names['name'] == 'sys_err_line')[0][0]
-        syserr_line = (np.exp(np.median(sample[:, idx_line])) - 1.0) * line_mean_err
-        
-        
-        
-        im = ax[2].pcolormesh( vel/1e3, time, (plot_flux - model_flux)/np.sqrt(prof_err**2 + syserr_line**2), 
-                        cmap='RdBu_r', vmin=-7, vmax=7)
+        if include_res:
+            prof_err = self.bp.data['line2d_data']['profile'][:, :, 2].copy()
+            line_mean_err = np.mean(prof_err)
+            
+            sample = self.bp.results['sample']
+            idx_line =  np.nonzero(self.bp.para_names['name'] == 'sys_err_line')[0][0]
+            syserr_line = (np.exp(np.median(sample[:, idx_line])) - 1.0) * line_mean_err
+            
+            
+            
+            im = ax[2].pcolormesh( vel/1e3, time, (plot_flux - model_flux)/np.sqrt(prof_err**2 + syserr_line**2), 
+                            cmap='RdBu_r', vmin=-7, vmax=7)
 
         #############################################################
         #Aesthetics
@@ -204,7 +212,9 @@ class Result:
         ax[0].set_ylabel('MJD', fontsize=13)
         ax[0].set_title('Data', fontsize=16)
         ax[1].set_title('Model', fontsize=16)
-        ax[2].set_title('Residuals', fontsize=16)
+        
+        if include_res:
+            ax[2].set_title('Residuals', fontsize=16)
         
         for a in ax:
             a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=13)
@@ -223,8 +233,10 @@ class Result:
         
         
         plt.subplots_adjust(wspace=0.05)
-        cbar = plt.colorbar(im, ax=ax[2], pad=0.01, aspect=15 )
-        cbar.ax.set_ylabel(r'Units of $\sigma$', fontsize=12, rotation=270, labelpad=10)
+        
+        if include_res:
+            cbar = plt.colorbar(im, ax=ax[2], pad=0.01, aspect=15 )
+            cbar.ax.set_ylabel(r'Units of $\sigma$', fontsize=12, rotation=270, labelpad=10)
     
         if output_fname is not None:
             plt.savefig(output_fname, bbox_inches='tight', dpi=200)
@@ -384,13 +396,13 @@ class Result:
                     marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
         ax[0].set_xlabel('x [lt-d]', fontsize=18)
         ax[0].set_ylabel('z [lt-d]', fontsize=18)
-        ax[0].set_title('Edge-On', fontsize=20)
+        ax[0].set_title('Side View', fontsize=20)
         
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
         ax[1].set_xlabel('y [lt-d]', fontsize=18)
-        ax[1].set_title('Face-On', fontsize=20)
+        ax[1].set_title('Observer POV', fontsize=20)
 
         if bounds is not None:
             for a in ax:
@@ -829,21 +841,31 @@ class Result:
 
 
     def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
+                 include_res=True,
                  output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
         """
         
         fig = plt.figure(figsize=(12, 7))
-        gs_tot = gridspec.GridSpec(2, 3, figure=fig, hspace=.4, height_ratios=[1,1.1])
+        gs_tot = gridspec.GridSpec(2, 12, figure=fig, hspace=.4, height_ratios=[1,1.1])
         
         
         #TOP: Profiles
-        gs_top = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[0,:])
-        ax1 = fig.add_subplot(gs_top[0])
-        ax2 = fig.add_subplot(gs_top[1], sharey=ax1, sharex=ax1)
-        ax3 = fig.add_subplot(gs_top[2], sharey=ax1, sharex=ax1)
-        ax_top = [ax1, ax2, ax3]
+        
+        if include_res:
+            gs_top = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[0,:])
+            ax1 = fig.add_subplot(gs_top[0])
+            ax2 = fig.add_subplot(gs_top[1], sharey=ax1, sharex=ax1)
+            ax3 = fig.add_subplot(gs_top[2], sharey=ax1, sharex=ax1)
+            ax_top = [ax1, ax2, ax3]
+            
+        else:
+            gs_top = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[0,:])
+            ax1 = fig.add_subplot(gs_top[0])
+            ax2 = fig.add_subplot(gs_top[1], sharey=ax1, sharex=ax1)
+            ax_top = [ax1, ax2]
+        
         
         ax_top = self.line2d_plot(xbounds=line_xbounds, ax=ax_top, show=False)
         
