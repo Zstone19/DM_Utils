@@ -208,7 +208,7 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False,
             ax3 = fig.add_subplot(gs_l[2], sharey=ax1, sharex=ax1)
             ax_2d = [ax1, ax2, ax3]
         else:
-            gs_l = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
+            gs_l = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:3], wspace=.08)
             ax1 = fig.add_subplot(gs_l[0])
             ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
             ax_2d = [ax1, ax2]
