@@ -167,7 +167,7 @@ def plot_mult(res_arr, res_names=None,
 
 
 
-def plot_mult_fitres(res_arr, res_names=None, 
+def plot_mult_fitres(res_arr, res_names=None, include_res=False,
                      xbounds_arr=None, output_fname=None, show=False):
     
     
@@ -200,18 +200,26 @@ def plot_mult_fitres(res_arr, res_names=None,
     gs_tot = gridspec.GridSpec(nres, 6, figure=fig, hspace=.3, wspace=.2)
     
     for i, res in enumerate(res_arr):
-        gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.08)
-        ax1 = fig.add_subplot(gs_l[0])
-        ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
-        ax3 = fig.add_subplot(gs_l[2], sharey=ax1, sharex=ax1)
-        ax_2d = [ax1, ax2, ax3]
+        
+        if include_res:
+            gs_l = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[i,:3], wspace=.08)
+            ax1 = fig.add_subplot(gs_l[0])
+            ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
+            ax3 = fig.add_subplot(gs_l[2], sharey=ax1, sharex=ax1)
+            ax_2d = [ax1, ax2, ax3]
+        else:
+            gs_l = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
+            ax1 = fig.add_subplot(gs_l[0])
+            ax2 = fig.add_subplot(gs_l[1], sharey=ax1, sharex=ax1)
+            ax_2d = [ax1, ax2]
+
 
         gs_r = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_tot[i,3:], wspace=.08)
         ax1 = fig.add_subplot(gs_r[0])
         ax2 = fig.add_subplot(gs_r[1], sharex=ax1)
         ax_lc = [ax1, ax2]
         
-        ax_2d = res.line2d_plot(xbounds=xbounds_arr[i], ax=ax_2d, show=False)
+        ax_2d = res.line2d_plot(include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
         ax_lc = res.lc_fits_plot(ax=ax_lc, show=False)
         
             

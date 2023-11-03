@@ -597,6 +597,7 @@ class Result:
         ax[0].fill_between(xout, yout_lo, yout_hi, color='orange', alpha=.3)        
         
         
+        xmin = np.min(xin) - .1*( np.max(xin) - np.min(xin) )
         
         
         ######################################################
@@ -644,6 +645,7 @@ class Result:
             a.tick_params('both', which='minor', length=3)
             a.tick_params('both', which='major', labelsize=10)
             
+            a.set_xlim(left=xmin)
             a.yaxis.set_label_position("right")
             a.tick_params('y', which='both', labelleft=False, labelright=True)
         
