@@ -66,9 +66,9 @@ def make_qsopar(path, fname='qsopar.fits', oiii_wings=False):
     (1549.06, 'CIV', 1500, 1700, 'CIV_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05,   0.015, 0, 0, 0, 0.05 , 1),
     (1549.06, 'CIV', 1500, 1700, 'CIV_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01,  1, 1, 0, 0.002, 1),
     (1640.42, 'CIV', 1500, 1700, 'HeII1640',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
-    #(1663.48, 'CIV', 1500, 1700, 'OIII1663',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
+    (1663.48, 'CIV', 1500, 1700, 'OIII1663',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
     (1640.42, 'CIV', 1500, 1700, 'HeII1640_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
-    #(1663.48, 'CIV', 1500, 1700, 'OIII1663_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
+    (1663.48, 'CIV', 1500, 1700, 'OIII1663_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
 
     #(1402.06, 'SiIV', 1290, 1450, 'SiIV_OIV1', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
     #(1396.76, 'SiIV', 1290, 1450, 'SiIV_OIV2', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
@@ -270,8 +270,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     print('Fitting epoch {}'.format(ind+1))
 
     if line_name not in ['mg2', 'c4']:
-        assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'
-
+        assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'        
 
     lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
     flux = np.array(obj.table_arr[ind]['corrected_flux'])
@@ -286,20 +285,23 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     fiberid = obj.fiberid[ind]
     
     
-    
     decompose_host = True
     if line_name is None:
         wave_range = None
     elif line_name == 'mg2':
         wave_range = np.array([2200, 3090])
         decompose_host = False
+        center = 2798
     elif line_name == 'c4':
         wave_range = np.array([1445, 1705])
         decompose_host = False
+        center = 1549
     elif line_name == 'hb':
         wave_range = np.array([4435, 5535])
+        center = 4861
     elif line_name == 'ha':
         wave_range = np.array([6100, 7000])
+        center = 6563
 
     
     
@@ -325,8 +327,18 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     nsamp = 200
     nthin = 10
     
+    #Don't use masks if they remove the line
+    if line_name is not None:
+        new_lam = lam.copy()
+        mask_ind = np.where( (and_mask == 0) & (and_mask == 0) , True, False)
+        new_lam = new_lam[mask_ind]
+        
+        if new_lam[0] > center:
+            masks = False
 
-    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix        
+    
+
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix    
         
     try:
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
@@ -358,7 +370,6 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
             Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
             save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
             save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
-
 
 
     rerun1 = check_bad_run(qi, line_name)
