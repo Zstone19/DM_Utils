@@ -90,6 +90,39 @@ class Object:
             self.table_arr[i]['corrected_err'] = np.array(self.table_arr[i]['Flux_Err']) / self.lnp0_dat['p0'][i]
 
         self.res_fnames = {}
+        
+
+
+    def get_line_names(self):
+        c4 = [1445, 1705]
+        mg2 = [2700, 3090]
+        hb = [4435, 5535]
+        ha = [6400, 6800]
+        ranges = [c4, mg2, hb, ha]
+        names = ['c4', 'mg2', 'hb', 'ha']
+
+
+        wlmin = []
+        wlmax = []
+        for i in range(len(self.table_arr)):
+            wl = np.array( self.table_arr[i]['Wave[vaccum]'] )/(1+self.z)
+            wlmin.append( np.min(wl) )
+            wlmax.append( np.max(wl) )
+            
+        wlmin = np.max(wlmin)
+        wlmax = np.min(wlmax)
+        
+        
+        line_names = []
+        for i in range(len(ranges)):
+            if len(ranges[i]) == 0:
+                continue
+                
+            if (wlmin < ranges[i][0]) & (wlmax > ranges[i][1]):
+                line_names.append(names[i])
+        
+        return line_names
+
 
 
     def get_fe2_params(self, line_name):
