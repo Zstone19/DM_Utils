@@ -74,7 +74,7 @@ class Object:
     
         #Get redshift
         if os.path.exists( self.main_dir + '/prepspec/dat/redshift_sdssrm{:04d}.dat'.format(self.rmid) ):
-            self.z = np.loadtxt( self.main_dir + '/prepspec/dat/redshift_sdssrm{:04d}.dat'.format(self.rmid) )
+            self.z = float( np.loadtxt( self.main_dir + '/prepspec/dat/redshift_sdssrm{:04d}.dat'.format(self.rmid) ) )
         else:           
             self.z = np.median(self.z_arr)
 
