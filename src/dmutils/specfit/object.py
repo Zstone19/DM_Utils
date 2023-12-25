@@ -33,7 +33,7 @@ class Object:
 
         #Get header info
         self.mjd = np.zeros_like(self.raw_spec_filenames, dtype=float)
-        z_arr = np.zeros_like(self.raw_spec_filenames, dtype=float)
+        self.z_arr = np.zeros_like(self.raw_spec_filenames, dtype=float)
         self.epochs = np.zeros_like(self.raw_spec_filenames, dtype=int)
         self.plateid = np.zeros_like(self.raw_spec_filenames, dtype=int)
         self.fiberid = np.zeros_like(self.raw_spec_filenames, dtype=int)
@@ -66,13 +66,13 @@ class Object:
         self.epochs = self.epochs[sort_ind]
         self.plateid = self.plateid[sort_ind]
         self.fiberid = self.fiberid[sort_ind]
-        z_arr = z_arr[sort_ind]
+        self.z_arr = self.z_arr[sort_ind]
         
         self.nepoch = len(self.epochs)
 
         
         #Get redshift
-        self.z = np.median(z_arr)
+        self.z = np.median(self.z_arr)
         
         #Get p0
         self.lnp0_dat['p0'] = np.exp(self.lnp0_dat['lnp0'].tolist())
