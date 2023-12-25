@@ -8,10 +8,10 @@ from dmutils import input
 
 class Object:
     
-    def __init__(self, rmid):
+    def __init__(self, rmid, main_dir='/data3/stone28/2drm/sdssrm/'):
         
         self.rmid = int(rmid)
-        self.main_dir = '/data3/stone28/2drm/sdssrm/rm{:03d}/'.format(rmid)
+        self.main_dir = main_dir + 'rm{:03d}/'.format(rmid)
 
         self.raw_spec_dir = self.main_dir + 'raw_spec/'
         self.p0_filename = self.main_dir + 'p0t.dat'
