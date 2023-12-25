@@ -45,7 +45,7 @@ class Object:
             with gzip.open(self.raw_spec_filenames[i], mode="rt") as f:
                 file_content = f.readlines()
                 self.mjd[i] = float( file_content[0].split()[1].split('=')[1] )
-                z_arr[i] = float( file_content[2].split()[1].split('=')[1] )  
+                self.z_arr[i] = float( file_content[2].split()[1].split('=')[1] )  
                 self.epochs[i] = int( file_content[3].split()[-1].split('=')[-1] )
                 
                 self.plateid[i] = int( file_content[4].split()[1].split('=')[1]  )
