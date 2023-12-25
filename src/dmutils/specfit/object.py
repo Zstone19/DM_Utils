@@ -3,6 +3,7 @@ from astropy.table import Table
 
 import glob
 import gzip
+import os
 
 from dmutils import input
 
@@ -70,10 +71,14 @@ class Object:
         
         self.nepoch = len(self.epochs)
 
-        
+    
         #Get redshift
-        self.z = np.median(self.z_arr)
-        
+        if os.path.exists( self.main_dir + '/prepspec/dat/redshift_sdssrm{:04d}.dat'.format(self.rmid) ):
+            self.z = np.loadtxt( self.main_dir + '/prepspec/dat/redshift_sdssrm{:04d}.dat'.format(self.rmid) )[0]
+        else:           
+            self.z = np.median(self.z_arr)
+
+    
         #Get p0
         self.lnp0_dat['p0'] = np.exp(self.lnp0_dat['lnp0'].tolist())
         self.lnp0_dat['mjd'] = np.array(self.lnp0_dat['mjd']) + 50000
