@@ -72,8 +72,7 @@ class Object:
 
         
         #Get redshift
-        assert np.all( z_arr == z_arr[0] )
-        self.z = z_arr[0]
+        self.z = np.median(z_arr)
         
         #Get p0
         self.lnp0_dat['p0'] = np.exp(self.lnp0_dat['lnp0'].tolist())
