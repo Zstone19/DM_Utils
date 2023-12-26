@@ -16,7 +16,7 @@ from pyqsofit.PyQSOFit import QSOFit
 ############################### USEFUL FUNCTIONS #############################
 ##############################################################################
 
-def make_qsopar(path, fname='qsopar.fits', oiii_wings=False):
+def make_qsopar_old(path, fname='qsopar.fits', oiii_wings=False):
 
     """
     Create parameter file
@@ -83,16 +83,6 @@ def make_qsopar(path, fname='qsopar.fits', oiii_wings=False):
         recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.001, 1) )
         recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.002, 1) )        
 
-    # if 'c1' in OIIItypes:
-    #     recs.append( (4960.30, r'H$\beta$', 4640., 5100.,'OIII4959c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.002, 0.01,   1,  1,  0,  0.002, 1) )  #Qiaoya's
-    # if 'c2' in OIIItypes:
-    #     recs.append( (5008.24, r'H$\beta$', 4640., 5100.,'OIII5007c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.002, 0.01,   1,  1,  0,  0.004, 1) )
-    # if 'w1' in OIIItypes:
-    #     recs.append( (4960.30, r'H$\beta$', 4640., 5100.,'OIII4959w', 1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004, 0.01,   2,  2,  0,  0.001, 1) )
-    # if 'w2' in OIIItypes:
-    #     recs.append( (5008.24, r'H$\beta$', 4640., 5100.,'OIII5007w', 1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004, 0.01,   2,  2,  0,  0.002, 1) )
-
-
     newdata = np.rec.array( recs, 
     formats = 'float32,      a20,  float32, float32,      a20,  int32, float32, float32, float32, float32, float32, float32, float32,   int32,  int32,  int32,   float32, int32',
     names  =  ' lambda, compname,   minwav,  maxwav, linename, ngauss,  inisca,  minsca,  maxsca,  inisig,  minsig,  maxsig,  voff,     vindex, windex,  findex,  fvalue,  vary')
@@ -127,6 +117,94 @@ def make_qsopar(path, fname='qsopar.fits', oiii_wings=False):
     hdu.writeto(os.path.join(path, fname), overwrite=True)
     
     return hdr, newdata
+
+
+
+def make_qsopar(path, fname='qsopar.fits', oiii_wings=True):    
+    """
+    Create parameter file
+    lambda    complexname  minwav maxwav linename     ngauss inisca minsca maxsca inisig minsig    maxsig  inidw mindw   maxdw  vindex windex findex fvalue varysca, varysig, varydw
+    """
+
+    recs = [
+    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_br',      3,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.015, 0.015, 0,     0,     0,    0.05 , 1,        1,       1),
+    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002, 1,        1,       1),
+    (6549.85, r'H$\alpha$', 6400, 6800, 'NII6549',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     1,    0.001, 1,        1,       1),
+    (6585.28, r'H$\alpha$', 6400, 6800, 'NII6585',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     1,    0.003, 1,        1,       1),
+    (6718.29, r'H$\alpha$', 6400, 6800, 'SII6718',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     2,    0.001, 1,        1,       1),
+    (6732.67, r'H$\alpha$', 6400, 6800, 'SII6732',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     2,    0.001, 1,        1,       1),
+
+    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_br',       3,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.01,  0.01,  0,     0,     0,    0.01 , 1,        1,       1),
+    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_na',       1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002, 1,        1,       1),
+    (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959c',   1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     1,    0.333, 1,        1,       1),
+    (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007c',   1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     1,    1.000, 1,        1,       1),
+    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00  -0.005, 0.005, 0,     0,     0,    0.001, 1,        1,       1),
+    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_na', 1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00  -0.005, 0.005, 1,     1,     0,    0.001, 1,        1,       1),
+
+    (3728.48, 'OII',       3650, 3800, 'OII3728',     1,     0.1,   0.0,   1e10,  1e-3,  3.333e-4, 0.0017, 0.00  -0.01,  0.01,  1,     1,     0,    0.001, 1,        1,       1),
+
+    (2798.75, 'MgII',      2700, 2900, 'MgII_br',     2,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00  -0.015, 0.015, 0,     0,     0,    0.05,  1,        1,       1),
+    (2798.75, 'MgII',      2700, 2900, 'MgII_na',     1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00  -0.01,  0.01,  1,     1,     0,    0.002, 1,        1,       1),
+
+    (1908.73, 'CIII',      1700, 1970, 'CIII_br',     2,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00  -0.015, 0.015, 99,    0,     0,    0.01,  1,        1,       1),
+    (1908.73, 'CIII',      1700, 1970, 'CIII_na',     1,     0.1,   0.0,    1e10, 1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002, 1,        1,       1),
+ 
+    (1549.06, 'CIV',       1500, 1700, 'CIV_br',      1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00  -0.015, 0.015, 0,     0,     0,    0.05 , 1,        1,       1),
+    (1549.06, 'CIV',       1500, 1700, 'CIV_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00  -0.01,  0.01,  1,     1,     0,    0.002, 1,        1,       1),
+    (1640.42, 'CIV',       1500, 1700, 'HeII1640',    1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00  -0.008, 0.008, 1,     1,     0,    0.002, 1,        1,       1),
+    (1663.48, 'CIV',       1500, 1700, 'OIII1663',    1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00  -0.008, 0.008, 1,     1,     0,    0.002, 1,        1,       1),
+    (1640.42, 'CIV',       1500, 1700, 'HeII1640_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.0025,   0.02,   0.00  -0.008, 0.008, 1,     1,     0,    0.002, 1,        1,       1),
+    (1663.48, 'CIV',       1500, 1700, 'OIII1663_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.0025,   0.02,   0.00  -0.008, 0.008, 1,     1,     0,    0.002, 1,        1,       1),
+
+    (1215.67, 'Lya',       1150, 1290, 'Lya_br',      1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00  -0.02,  0.02,  0,     0,     0,    0.05 , 1,        1,       1),
+    (1215.67, 'Lya',       1150, 1290, 'Lya_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00  -0.01,  0.01,  0,     0,     0,    0.002, 1,        1,       1)],
+
+    if oiii_wings:
+        recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959w',   1,     0.1,   0.0,   1e10,  3e-3,  2.3e-4, 0.004,  0.00, -0.01,  0.01,  2,     2,     0,    0.001, 1,        1,       1) )
+        recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007w',   1,     0.1,   0.0,   1e10,  3e-3,  2.3e-4, 0.004,  0.00, -0.01,  0.01,  2,     2,     0,    0.002, 1,        1,       1) )
+
+
+    newdata = np.rec.array( recs,
+                            formats = 'float32, a20,      float32, float32, a20,      int32,  float32, float32, float32, float32, float32, float32, float32, float32, float32, int32, int32,  int32, float32, int32,   int32,  int32',
+                            names  =  'lambda, compname, minwav, maxwav, linename, ngauss, inisca, minsca, maxsca, inisig, minsig, maxsig, inidw,  mindw,  maxdw, vindex, windex, findex, fvalue, varysca, varsig, varydw')
+
+
+
+    # Header
+    hdr = fits.Header()
+    hdr['lambda'] = 'Vacuum Wavelength in Ang'
+    hdr['minwav'] = 'Lower complex fitting wavelength range'
+    hdr['maxwav'] = 'Upper complex fitting wavelength range'
+    hdr['ngauss'] = 'Number of Gaussians for the line'
+
+    # Can be set to negative for absorption lines if you want
+    hdr['inisca'] = 'Initial guess of line scale [flux]'
+    hdr['minsca'] = 'Lower range of line scale [flux]'
+    hdr['maxsca'] = 'Upper range of line scale [flux]'
+
+    hdr['inisig'] = 'Initial guess of linesigma [lnlambda]'
+    hdr['minsig'] = 'Lower range of line sigma [lnlambda]'  
+    hdr['maxsig'] = 'Upper range of line sigma [lnlambda]'
+
+    hdr['inidw'] = 'Initial guess of velocity offset [lnlambda]'
+    hdr['mindw'] = 'Lower range of velocity offset [lnlambda]'
+    hdr['maxdw'] = 'Upper range of velocity offset [lnlambda]'
+    
+    hdr['vindex'] = 'Entries w/ same NONZERO vindex constrained to have same velocity'
+    hdr['windex'] = 'Entries w/ same NONZERO windex constrained to have same width'
+    hdr['findex'] = 'Entries w/ same NONZERO findex have constrained flux ratios'
+    hdr['fvalue'] = 'Relative scale factor for entries w/ same findex'
+
+    hdr['varysca'] = 'Whether or not to vary the line scales (set to 0 to fix the line parameters to initial values)'
+    hdr['varysig'] = 'Whether or not to vary the line width (set to 0 to fix the line parameters to initial values)'
+    hdr['varydw'] = 'Whether or not to vary the line offsets (set to 0 to fix the line parameters to initial values)'
+
+    # Save line info
+    hdu = fits.BinTableHDU(data=newdata, header=hdr, name='data')
+    hdu.writeto(os.path.join(path, fname), overwrite=True)
+
+    return hdr, newdata
+
 
 
 #NEED TO REWORK THIS !!!!!!!!!!!!!!!!
