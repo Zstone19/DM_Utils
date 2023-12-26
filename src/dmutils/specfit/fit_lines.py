@@ -315,6 +315,8 @@ def check_bad_run(qi, line_name):
         c = np.argwhere( qi.uniq_linecomp_sort == 'MgII' ).T[0][0]
         chi2_nu2 = float(qi.comp_result[c*7+4])
         
+        print(chi2_nu2)
+        
         if chi2_nu2 > 3:
             rerun = True
             
