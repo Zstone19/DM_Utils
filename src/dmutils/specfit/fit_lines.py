@@ -314,11 +314,10 @@ def check_bad_run(qi, line_name):
         #Get chi2 of MgII
         c = np.argwhere( qi.uniq_linecomp_sort == 'MgII' ).T[0][0]
         chi2_nu2 = float(qi.comp_result[c*7+4])
-        
-        print(chi2_nu2)
-        
+    
         if chi2_nu2 > 3:
             rerun = True
+
             
     elif line_name == 'c4':
         #Get chi2 of CIV
@@ -457,7 +456,7 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
 
     #If chi2nu is too high or it doesn't fit [OIII]4959, rerun a couple of times
     n = 0
-    while rerun:
+    while (rerun is True):
 
         n += 1
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir)
