@@ -10,6 +10,19 @@ from functools import partial
 
 from pyqsofit.PyQSOFit import QSOFit
 from dmutils.specfit.host_contribution import remove_host_flux
+from dmutils.specfit.qsopar import make_qsopar
+
+
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from os import devnull
+
+@contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(devnull, 'w') as fnull:
+        with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
+            yield (err, out)
+
 
 
 ##########################################################################################
@@ -19,6 +32,10 @@ from dmutils.specfit.host_contribution import remove_host_flux
 def save_feii_params(qi_arr, output_dir, line_name):
 
     epochs = np.array( range(len(qi_arr)) ) + 1
+    
+    
+    ##########################################
+    # FeII
     
     if line_name in ['mg2', 'c4']:
         tot_params = np.zeros( (len(epochs), 3*2) )
@@ -57,6 +74,28 @@ def save_feii_params(qi_arr, output_dir, line_name):
 
     dat.write( output_dir + 'best_fit_params.dat', format='ascii', overwrite=True )
     
+    
+    
+    ##########################################
+    # Power Law Continuum
+        
+    colnames = ['PL_norm', 'PL_norm_err', 'PL_slope', 'PL_slope_err']
+    tot_params = np.zeros( (len(epochs), len(colnames)) )
+    for i in range(len(epochs)):
+        pp_tot = qi_arr[i].conti_result.astype(float)
+
+        for j in range(len(colnames)):
+            tot_params[i, j] = pp_tot[ qi_arr[i].conti_result_name == colnames[j]]
+    
+    
+    
+    dat = Table( [epochs], names=['Epoch'] )
+    for i in range(len(colnames)):
+        dat[colnames[i]] = tot_params[:, i]
+        
+    dat.write( output_dir + 'best_fit_params_cont.dat', format='ascii', overwrite=True )
+    
+    
     return
 
 
@@ -64,6 +103,9 @@ def save_feii_params(qi_arr, output_dir, line_name):
 def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, line_name):
     
     epochs = indices + 1
+    
+    ##########################################
+    # FeII
     
     if line_name in ['mg2', 'c4']:
         tot_params = np.zeros( (len(epochs), 3*2) )
@@ -111,8 +153,6 @@ def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, 
                     'Norm_op', 'Norm_op_Err', 'FWHM_op', 'FWHM_op_Err', 'Shift_op', 'Shift_op_Err']
         
         
-        
-        
     dat_og = Table.read(output_dir + 'best_fit_params.dat', format='ascii')
     
     for i, ind in enumerate(indices):
@@ -120,7 +160,29 @@ def resave_feii_params(indices, Fe_uv_params, Fe_op_params, qi_arr, output_dir, 
             dat_og[col][ind] = tot_params[i, j]
 
     dat_og.write( output_dir + 'best_fit_params.dat', format='ascii', overwrite=True )
+    
+    
+    
+    ##########################################
+    # Power Law Continuum
+    
+    colnames = ['PL_norm', 'PL_norm_err', 'PL_slope', 'PL_slope_err']        
+    tot_params = np.zeros( (len(epochs), len(colnames)) )
+    for i in range(len(epochs)):
+        pp_tot = qi_arr[i].conti_result.astype(float)
 
+        for j in range(len(colnames)):
+            tot_params[i, j] = pp_tot[ qi_arr[i].conti_result_name == colnames[j]]
+
+            
+    
+    dat_og = Table.read(output_dir + 'best_fit_params_cont.dat', format='ascii')
+    
+    for i, ind in enumerate(indices):
+        for j, col in enumerate(colnames):
+            dat_og[col][ind] = tot_params[i, j]
+            
+    dat_og.write( output_dir + 'best_fit_params_cont.dat', format='ascii', overwrite=True )
 
     return
 
@@ -259,42 +321,45 @@ def host_job(ind, obj, qsopar_dir, line_name,
                                                             z=obj.z)
 
     
-    
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, ind+1)
+    res_dir = obj.main_dir + line_name + '/fe2/'
     try:
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)    
     
-        qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                and_mask=use_and_mask, or_mask=use_or_mask,
-                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                decompose_host=False,
-                Fe_uv_op=True, poly=False,
-                rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                save_fits_name=None, save_fits_path=None, verbose=False,
-                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+        with suppress_stdout_stderr():
+            qi.Fit(name=name, nsmooth=1, deredden=True, 
+                    and_mask=use_and_mask, or_mask=use_or_mask,
+                    reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                    decompose_host=False,
+                    Fe_uv_op=True, poly=False,
+                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                    Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                    Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
     except Exception:
         use_and_mask = False
         use_or_mask = False
         
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                 and_mask_in=and_mask, or_mask_in=or_mask)
-        
-        qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                and_mask=use_and_mask, or_mask=use_or_mask,
-                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                decompose_host=False,
-                Fe_uv_op=True, poly=False,
-                rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                save_fits_name=None, save_fits_path=None, verbose=False,
-                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})        
+
+        with suppress_stdout_stderr():
+            qi.Fit(name=name, nsmooth=1, deredden=True, 
+                    and_mask=use_and_mask, or_mask=use_or_mask,
+                    reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                    decompose_host=False,
+                    Fe_uv_op=True, poly=False,
+                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                    Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                    Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})        
         
     
     
@@ -309,18 +374,19 @@ def host_job(ind, obj, qsopar_dir, line_name,
                 qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                             and_mask_in=and_mask, or_mask_in=or_mask)
                 
-                qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                        and_mask=use_and_mask, or_mask=use_or_mask,
-                        reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                        decompose_host=False, 
-                        Fe_uv_op=True, poly=False,
-                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                        Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                        Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                        save_fits_name=None, save_fits_path=None, verbose=False,
-                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+                with suppress_stdout_stderr():
+                    qi.Fit(name=name, nsmooth=1, deredden=True, 
+                            and_mask=use_and_mask, or_mask=use_or_mask,
+                            reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                            decompose_host=False, 
+                            Fe_uv_op=True, poly=False,
+                            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                            Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                            Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                            save_result=False, plot_fig=False, save_fig=False, plot_corner=False,
+                            save_fits_name=None, save_fits_path=None, verbose=False,
+                            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
             except Exception:
                 use_and_mask = False
                 use_or_mask = False
@@ -328,18 +394,19 @@ def host_job(ind, obj, qsopar_dir, line_name,
                 qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                             and_mask_in=and_mask, or_mask_in=or_mask)
                 
-                qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                        and_mask=use_and_mask, or_mask=use_or_mask,
-                        reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
-                        decompose_host=False,
-                        Fe_uv_op=True, poly=False,
-                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                        Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
-                        Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
-                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                        save_fits_name=None, save_fits_path=None, verbose=False,
-                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})  
+                with suppress_stdout_stderr():
+                    qi.Fit(name=name, nsmooth=1, deredden=True, 
+                            and_mask=use_and_mask, or_mask=use_or_mask,
+                            reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                            decompose_host=False,
+                            Fe_uv_op=True, poly=False,
+                            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                            Fe_uv_fix=Fe_uv_params, Fe_uv_range=Fe_uv_range,
+                            Fe_op_fix=Fe_op_params, Fe_op_range=Fe_op_range,
+                            save_result=False, plot_fig=False, save_fig=False, plot_corner=False,
+                            save_fits_name=None, save_fits_path=None, verbose=False,
+                            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})  
 
 
             rerun = check_rerun(qi, line_name)
@@ -796,6 +863,62 @@ def iterate_refitting(obj, fit_dir, qsopar_dir, nburn, nsamp, nthin, line_name,
         
     return masks_tot, refit_epochs, refit_iter
 
+##########################################################################################
+##################################### GET CONTINUUM ######################################
+##########################################################################################
+
+def cont_job(ind, obj, line_name, qsopar_dir, host_dir=None, rej_abs_line=False):
+
+    fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
+    
+    if line_name in ['mg2', 'c4']:
+        fe_op_params = None
+    else:
+        fe_op_params = np.array( list(obj.fe2_params[ind]) )[[7,9,11]]
+    
+    
+    qi = host_job(ind, obj, qsopar_dir, line_name,
+                  rej_abs_line=rej_abs_line, 
+                  nburn=100, nsamp=200, nthin=10,
+                  host_dir=host_dir,
+                  linefit=True, mask_line=False, 
+                  Fe_uv_params=fe_uv_params, Fe_uv_range=None,
+                  Fe_op_params=fe_op_params, Fe_op_range=None)
+        
+    return qi
+
+
+def get_continuum(obj, line_name, qsopar_dir, host_dir=None, rej_abs_line=False):
+    
+    _ = make_qsopar(qsopar_dir)
+    
+    obj.get_fe2_params(line_name)
+    newjob = partial(cont_job, obj=obj, line_name=line_name, 
+                     qsopar_dir=qsopar_dir, host_dir=host_dir, 
+                     rej_abs_line=rej_abs_line)
+        
+    pool = mp.Pool()
+    qi_arr = pool.map( newjob, range(obj.nepoch) )
+    pool.close()
+    pool.join()
+    
+    
+    colnames = ['PL_norm', 'PL_norm_err', 'PL_slope', 'PL_slope_err']        
+    tot_params = np.zeros( (obj.nepoch, len(colnames)) )
+    for i in range(obj.nepoch):
+        pp_tot = qi_arr[i].conti_result.astype(float)
+
+        for j in range(len(colnames)):
+            tot_params[i, j] = pp_tot[ qi_arr[i].conti_result_name == colnames[j]]
+        
+        
+    dat = Table( [obj.epochs], names=['Epoch'] )
+    for i in range(len(colnames)):
+        dat[colnames[i]] = tot_params[:, i]
+        
+    dat.write( obj.main_dir + line_name + '/fe2/best_fit_params_cont.dat', format='ascii', overwrite=True )
+
+    return
 
 ##########################################################################################
 ################################### FOR EXTERNAL USE #####################################
@@ -846,6 +969,138 @@ def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, line_name, z=None, cont=False)
         interp_fe2_flux = interpolate_fe2_flux(rest_wl, ref_feii_fname, line_name)
         return flux - interp_fe2_flux
 
+##########################################################################################
+################################### Save Processed Spectra ###############################
+##########################################################################################
+
+def save_processed_spec_indiv(ind, obj, qsopar_dir, line_name,
+                              rej_abs_line, 
+                              nburn, nsamp, nthin,
+                              host_dir=None):
+
+
+    assert line_name in ['mg2', 'c4', 'hb', 'ha']
+    
+    lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
+    flux = np.array(obj.table_arr[ind]['corrected_flux'])
+    err = np.array(obj.table_arr[ind]['corrected_err'])
+    
+    and_mask = np.array(obj.table_arr[ind]['ANDMASK'])
+    or_mask = np.array(obj.table_arr[ind]['ORMASK'])
+    
+    mjd = obj.mjd[ind]
+    plateid = obj.plateid[ind]
+    fiberid = obj.fiberid[ind]
+
+    use_and_mask = True
+    use_or_mask = True
+
+    wave_mask = None
+    if line_name == 'mg2':
+        wave_range = np.array([2200, 3090])      
+              
+    elif line_name == 'c4':
+        wave_range = np.array([1445, 1705])            
+
+    elif line_name == 'hb':
+        wave_range = np.array([4435, 5535])            
+        assert host_dir is not None, 'Must provide host_dir for H-beta'
+            
+    elif line_name == 'ha':
+        wave_range = np.array([6100, 7000])            
+        assert host_dir is not None, 'Must provide host_dir for H-alpha'
+
+    
+    use_and_mask = False
+    use_or_mask = False
+    
+    pl_params = np.array( list(obj.pl_params[ind]) )[[1,3]]
+    if line_name in ['mg2', 'c4']:
+        fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
+        fe_op_params = None
+    else:
+        fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
+        fe_op_params = np.array( list(obj.fe2_params[ind]) )[[7,9,11]]
+
+
+    if line_name in ['ha', 'hb']:
+        flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
+                                                            host_dir + 'best_host_flux.dat', 
+                                                            z=obj.z)
+        
+
+    name = 'RM{:03d}e{:03d}'.format(obj.rmid, ind+1)
+    try:
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                    and_mask_in=and_mask, or_mask_in=or_mask)  
+          
+        qi.Fit(name=name, nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                decompose_host=False,
+                Fe_uv_op=True, poly=False,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=False, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=False, 
+                Fe_uv_fix=fe_uv_params, Fe_uv_range=None,
+                Fe_op_fix=fe_op_params, Fe_op_range=None,
+                PL_fix=pl_params, PL_range=None,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+    except Exception:
+        use_and_mask = False
+        use_or_mask = False
+        
+        qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
+                and_mask_in=and_mask, or_mask_in=or_mask)
+        
+        qi.Fit(name=name, nsmooth=1, deredden=True, 
+                and_mask=use_and_mask, or_mask=use_or_mask,
+                reject_badpix=False, wave_range=wave_range, wave_mask=wave_mask, 
+                decompose_host=False,
+                Fe_uv_op=True, poly=False,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=False, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=False, 
+                Fe_uv_fix=fe_uv_params, Fe_uv_range=None,
+                Fe_op_fix=fe_op_params, Fe_op_range=None,
+                PL_fix=pl_params, PL_range=None,
+                save_result=False, plot_fig=False, save_fig=False, plot_corner=False,
+                save_fits_name=None, save_fits_path=None, verbose=False,
+                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})        
+    
+    return qi
+
+
+def save_processed_spec(obj, line_name, qsopar_dir, rej_abs_line=False,
+                        nburn=100, nsamp=200, nthin=10):
+    
+    print('Saving processed spectra')
+    
+    #Run jobs
+    obj.get_fe2_params(line_name)
+    newjob = partial(save_processed_spec_indiv, obj=obj, qsopar_dir=qsopar_dir, line_name=line_name,
+                     rej_abs_line=rej_abs_line, 
+                     nburn=nburn, nsamp=nsamp, nthin=nthin,
+                     host_dir=obj.main_dir + 'host_flux/')
+
+    pool = mp.Pool()
+    qi_arr = pool.map(newjob, range(obj.nepoch))
+    pool.close()
+    pool.join()
+    
+    for i in range(len(qi_arr)):
+        wl = qi_arr[i].wave
+        flux = qi_arr[i].flux - qi_arr[i].f_pl_model - qi_arr[i].f_fe_mgii_model - qi_arr[i].f_fe_balmer_model
+        err = qi_arr[i].err
+        and_mask = np.zeros_like(wl)
+        or_mask = np.zeros_like(wl)
+        
+        dat = Table([wl*(1+obj.z), flux, err, and_mask, or_mask], names=['Wave[vaccum]', 'corrected_flux', 'corrected_err', 'ANDMASK', 'ORMASK'])
+        dat.write(obj.main_dir + 'processed_spec/' + line_name + '/RM{:03d}_E{:03d}_{}_processed.csv'.format(obj.rmid, i+1, line_name), 
+                  format='ascii.csv', overwrite=True)
+    
+    
+    return
 
 ##########################################################################################
 ##########################################################################################
@@ -855,3 +1110,5 @@ def remove_fe2_mg2_flux(wl, flux, ref_feii_fname, line_name, z=None, cont=False)
 # 1. Run "get_feii_flux" to get preliminary results for the FeII flux for a given line
 # 2. Save all of the fluxes with "save_feii_flux"
 # 3. Run "iterate_refitting" to refit the badly fit epochs (sometimes multiple times depending on the method you choose)
+# 4. Run "get_continuum" to refit (continuum+line) of all epochs with the host+FeII subtracted, and save the continuum params
+# 5. Run "save_processed_spec" to refit all epochs with no mask, subtract the FeII+cont, and save the results

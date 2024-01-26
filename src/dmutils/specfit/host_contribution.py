@@ -9,6 +9,99 @@ from scipy.interpolate import splev, splrep
 
 from pyqsofit.PyQSOFit import QSOFit
 
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from os import devnull
+
+@contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(devnull, 'w') as fnull:
+        with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
+            yield (err, out)
+
+#####################################################################################
+#####################################################################################
+#####################################################################################
+
+def weighted_median(data, weights):
+    """
+    Args:
+      data (list or numpy.array): data
+      weights (list or numpy.array): weights
+    """
+    data, weights = np.array(data).squeeze(), np.array(weights).squeeze()
+    s_data, s_weights = map(np.array, zip(*sorted(zip(data, weights))))
+    midpoint = 0.5 * sum(s_weights)
+    if any(weights > midpoint):
+        w_median = (data[weights == np.max(weights)])[0]
+    else:
+        cs_weights = np.cumsum(s_weights)
+        idx = np.where(cs_weights <= midpoint)[0][-1]
+        if cs_weights[idx] == midpoint:
+            w_median = np.mean(s_data[idx:idx+2])
+        else:
+            w_median = s_data[idx+1]
+    return w_median
+
+#####################################################################################
+#####################################################################################
+#####################################################################################
+
+def median_func(fluxdat, snr):
+    best_flux = np.nanmedian(fluxdat, axis=0)
+    errlo = best_flux - np.nanpercentile(fluxdat, 16, axis=0)
+    errhi = np.nanpercentile(fluxdat, 84, axis=0) - best_flux
+    return best_flux, errlo, errhi
+
+def best_snr_func(fluxdat, snr):
+    best_flux = fluxdat[np.argmax(snr)]
+    errlo = best_flux - np.nanpercentile(fluxdat, 16, axis=0)
+    errhi = np.nanpercentile(fluxdat, 84, axis=0) - best_flux
+    return best_flux, errlo, errhi
+
+def median_func_limited(fluxdat, snr, snr_lim=25):
+    mask = np.array(snr) > snr_lim
+    fluxdat = np.array(fluxdat)[mask]
+    
+    best_flux = np.nanmedian(fluxdat, axis=0)
+    errlo = best_flux - np.nanpercentile(fluxdat, 16, axis=0)
+    errhi = np.nanpercentile(fluxdat, 84, axis=0) - best_flux
+    return best_flux, errlo, errhi
+
+def mean_func_weighted(fluxdat, snr, weights=None):
+    if weights is None:
+        weights = np.ones(len(snr))
+        
+    weights = np.array(weights)
+    
+    best_flux = np.zeros(len(fluxdat[0]))
+    for i in range(len(fluxdat)):
+        best_flux += weights[i] * fluxdat[i]
+
+    best_flux /= np.sum(weights)
+    errlo = best_flux - np.nanpercentile(fluxdat, 16, axis=0)
+    errhi = np.nanpercentile(fluxdat, 84, axis=0) - best_flux
+    
+    return best_flux, errlo, errhi
+
+
+
+def median_func_weighted(fluxdat, snr, weights=None):
+    if weights is None:
+        weights = np.ones(len(snr))
+
+    fluxdat = np.array(fluxdat)
+    weights = np.array(weights)
+    best_flux = np.zeros(fluxdat.shape[1])
+
+    for i in range(len(best_flux)):
+        best_flux[i] = weighted_median(fluxdat[:,i], weights)
+
+    errlo = best_flux - np.nanpercentile(fluxdat, 16, axis=0)
+    errhi = np.nanpercentile(fluxdat, 84, axis=0) - best_flux
+    
+    return best_flux, errlo, errhi
+
 
 #####################################################################################
 #####################################################################################
@@ -138,17 +231,22 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)
         
-        qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                and_mask=use_and_mask, or_mask=use_or_mask,
-                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-                decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-                Fe_uv_op=True, poly=poly,
-                rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                save_fits_name=None, save_fits_path=None, verbose=False,
-                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+        with suppress_stdout_stderr():
+            qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                    and_mask=use_and_mask, or_mask=use_or_mask,
+                    reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                    decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                    Fe_uv_op=True, poly=poly,
+                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                    Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+        
+        if np.max(qi.wave) < np.max(lam)-100:
+            raise Exception
+        
     except Exception:
         use_and_mask = False
         use_or_mask = False
@@ -156,18 +254,19 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)
         
-        qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                and_mask=use_and_mask, or_mask=use_or_mask,
-                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-                decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-                Fe_uv_op=True, poly=poly,
-                rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-                save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                save_fits_name=None, save_fits_path=None, verbose=False,
-                kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
-    
+        with suppress_stdout_stderr():
+            qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                    and_mask=use_and_mask, or_mask=use_or_mask,
+                    reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                    decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                    Fe_uv_op=True, poly=poly,
+                    rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                    MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                    Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                    save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                    save_fits_name=None, save_fits_path=None, verbose=False,
+                    kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+
     
     if linefit: 
         rerun = check_rerun(qi, line_name)
@@ -180,32 +279,34 @@ def host_job(ind, obj, qsopar_dir, line_name, rej_abs_line, nburn, nsamp, nthin,
                 qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                             and_mask_in=and_mask, or_mask_in=or_mask)
                 
-                qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                        and_mask=use_and_mask, or_mask=use_or_mask,
-                        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-                        decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-                        Fe_uv_op=True, poly=poly,
-                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                        Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                        save_fits_name=None, save_fits_path=None, verbose=False,
-                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+                with suppress_stdout_stderr():
+                    qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                            and_mask=use_and_mask, or_mask=use_or_mask,
+                            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                            decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                            Fe_uv_op=True, poly=poly,
+                            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                            Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                            save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                            save_fits_name=None, save_fits_path=None, verbose=False,
+                            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
             except Exception:
                 qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                             and_mask_in=and_mask, or_mask_in=or_mask)
                 
-                qi.Fit(name='Object', nsmooth=1, deredden=True, 
-                        and_mask=use_and_mask, or_mask=use_or_mask,
-                        reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-                        decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
-                        Fe_uv_op=True, poly=poly,
-                        rej_abs_conti=False, rej_abs_line=rej_abs_line,
-                        MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
-                        Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
-                        save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
-                        save_fits_name=None, save_fits_path=None, verbose=False,
-                        kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
+                with suppress_stdout_stderr():
+                    qi.Fit(name='Object', nsmooth=1, deredden=True, 
+                            and_mask=use_and_mask, or_mask=use_or_mask,
+                            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                            decompose_host=True, npca_gal=npca_gal, npca_qso=npca_qso, 
+                            Fe_uv_op=True, poly=poly,
+                            rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=linefit, 
+                            Fe_uv_fix=Fe_uv_params, Fe_op_fix=Fe_op_params,
+                            save_result=False, plot_fig=False, save_fig=False, plot_corner=False, 
+                            save_fits_name=None, save_fits_path=None, verbose=False,
+                            kwargs_conti_emcee={'progress':False}, kwargs_line_emcee={'progress':False})
 
                              
             
@@ -262,12 +363,11 @@ def get_host_flux(obj, indices, qsopar_dir, line_name, nburn, nsamp, nthin,
     
     
     host_fluxes = []
-    wl_arrs = []
-    
+    wl_arrs = []    
     for i in range(len(res)):
         wl_arrs.append(res[i][0])
         host_fluxes.append(res[i][1])
-    
+
     return wl_arrs, host_fluxes
 
 
@@ -290,7 +390,7 @@ def save_host_fluxes(wl_arrs, host_fluxes, output_dir):
     return
 
 
-def get_best_host_flux(obj, output_dir, line_name=None, method='snr'):
+def get_best_host_flux(obj, output_dir, line_name=None, func=median_func):
     
     if line_name == 'ha':
         bounds = [6100, 7000]
@@ -305,50 +405,38 @@ def get_best_host_flux(obj, output_dir, line_name=None, method='snr'):
     
     
     
-    if method == 'snr':
-        snr = []
-        for i in range(obj.nepoch):
-            dat = obj.table_arr[i].copy()
+    
+    snr = []
+    for i in range(obj.nepoch):
+        dat = obj.table_arr[i].copy()
+    
+        mask = (dat['Wave[vaccum]']/(1+obj.z) > bounds[0]) & (dat['Wave[vaccum]']/(1+obj.z) < bounds[1])
+        snr_i = dat['corrected_flux'][mask]/dat['corrected_err'][mask]
         
-            mask = (dat['Wave[vaccum]']/(1+obj.z) > bounds[0]) & (dat['Wave[vaccum]']/(1+obj.z) < bounds[1])
-            snr_i = dat['corrected_flux'][mask]/dat['corrected_err'][mask]
-            
-            snr.append(np.median(snr_i))
-
-
-        best_epoch = np.argmax(snr)+1
-        
-        
-        #Resave the best SNR host flux
-        best_dat = Table.read(output_dir + 'host_flux_epoch{:03d}.dat'.format(best_epoch), format='ascii')
-        best_dat.write(output_dir + 'best_host_flux.dat', format='ascii', overwrite=True)
-        
-        return best_epoch, snr
+        snr.append(np.median(snr_i))
     
     
-    
-    elif method == 'median':
         
-        wl_arr = []
-        flux_arr = []
-        wl_min_arr = []
-        wl_max_arr = []
+    wl_arr = []
+    flux_arr = []
+    wl_min_arr = []
+    wl_max_arr = []
 
-        #Get all host 
-        for epoch in np.array(range(obj.nepoch))+1:
-            wl, flux = np.loadtxt(output_dir + 'host_flux_epoch{:03d}.dat'.format(epoch), unpack=True, skiprows=1)
-            
-            wl_arr.append(wl)
-            flux_arr.append(flux)
+    #Get all host 
+    for epoch in np.array(range(obj.nepoch))+1:
+        wl, flux = np.loadtxt(output_dir + 'host_flux_epoch{:03d}.dat'.format(epoch), unpack=True, skiprows=1)
+        
+        wl_arr.append(wl)
+        flux_arr.append(flux)
 
-            good_ind = np.argwhere( flux > 0 ).T
-            if len(good_ind[0]) == 0:
-                continue
-            
-            good_ind = good_ind[0]
-            wl_min_arr.append( wl[good_ind[0]] )
-            wl_max_arr.append( wl[good_ind[-1]] )
-            
+        good_ind = np.argwhere( np.isfinite(flux) ).T
+        if len(good_ind[0]) == 0:
+            continue
+        
+        good_ind = good_ind[0]
+        wl_min_arr.append( wl[good_ind[0]] )
+        wl_max_arr.append( wl[good_ind[-1]] )
+        
     wl_min =  np.max(wl_min_arr)
     wl_max =  np.min(wl_max_arr)
     
@@ -369,13 +457,10 @@ def get_best_host_flux(obj, output_dir, line_name=None, method='snr'):
 
 
 
-    best_flux = np.median(flux_arr_fit, axis=0)
-    flux_err_lo = best_flux - np.percentile(flux_arr_fit, 16, axis=0)
-    flux_err_hi = np.percentile(flux_arr_fit, 84, axis=0) - best_flux
-    
+    best_flux, flux_err_lo, flux_err_hi = func(flux_arr_fit, snr)        
     dat = Table([wl_tot, best_flux, flux_err_lo, flux_err_hi], names=['RestWavelength', 'HostFlux', 'ErrLo', 'ErrHi'])
     dat.write(output_dir + 'best_host_flux.dat', format='ascii', overwrite=True)
-    
+
     return wl_tot, best_flux
 
 

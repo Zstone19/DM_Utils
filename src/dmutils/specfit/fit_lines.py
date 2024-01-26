@@ -12,199 +12,20 @@ from dmutils.specfit.object import Object
 from pyqsofit.PyQSOFit import QSOFit
 
 
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
+from os import devnull
+
+@contextmanager
+def suppress_stdout_stderr():
+    """A context manager that redirects stdout and stderr to devnull"""
+    with open(devnull, 'w') as fnull:
+        with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
+            yield (err, out)
+
+
 ##############################################################################
 ############################### USEFUL FUNCTIONS #############################
 ##############################################################################
-
-def make_qsopar_old(path, fname='qsopar.fits', oiii_wings=False):
-
-    """
-    Create parameter file
-    lambda    complexname  minwav maxwav linename ngauss inisca minsca maxsca inisig minsig maxsig voff vindex windex findex fvalue vary
-    """
-
-    recs = [(6564.61, r'H$\alpha$', 6400, 6800, 'Ha_br',   3, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.015, 0, 0, 0, 0.05 , 1),
-    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_na',   1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    (6549.85, r'H$\alpha$', 6400, 6800, 'NII6549', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 1, 0.001, 1),
-    (6585.28, r'H$\alpha$', 6400, 6800, 'NII6585', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 1, 0.003, 1),
-    (6718.29, r'H$\alpha$', 6400, 6800, 'SII6718', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 2, 0.001, 1),
-    (6732.67, r'H$\alpha$', 6400, 6800, 'SII6732', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 5e-3,  1, 1, 2, 0.001, 1),
-
-
-
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_br',    3, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.01, 0, 0, 0, 0.01 , 1),
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_na',    1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1),
-    (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1),
-    (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007c', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.01, 1, 1, 0, 0.004, 1),
-    # (4862.68, r'H$\beta$', 4640., 5100.,'Hb_br',     3, 0.1, 0.0, 1e10, 5e-3, 0.002,  0.05,  0.01,   0,  0,  0,  0.01 , 1), #Qiaoya's
-    # (4862.68, r'H$\beta$', 4640., 5100.,'Hb_na',     1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.002, 0.01,   1,  1,  0,  0.002, 1),
-    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004,  0.05,   0.005, 0, 0, 0, 0.001, 1),
-    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_na', 1, 0.1, 0.0, 1e10, 1e-3, 2.3e-4, 0.0017, 0.005, 1, 1, 0, 0.001, 1),
-
-
-    #(3934.78, 'CaII', 3900, 3960, 'CaII3934' , 2, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 99, 0, 0, -0.001, 1),
-
-    (3728.48, 'OII', 3650, 3800, 'OII3728', 1, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 1, 1, 0, 0.001, 1),
-
-    #(3426.84, 'NeV', 3380, 3480, 'NeV3426',    1, 0.1, 0.0, 1e10, 1e-3, 3.333e-4, 0.0017, 0.01, 0, 0, 0, 0.001, 1),
-    #(3426.84, 'NeV', 3380, 3480, 'NeV3426_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025,   0.02,   0.01, 0, 0, 0, 0.001, 1),
-
-    # (2798.75, 'MgII', 2700, 2900, 'MgII_br', 2, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05, 0.015, 0, 0, 0, 0.05, 1),
-    # (2798.75, 'MgII', 2700, 2900, 'MgII_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4, 0.0017, 0.01, 1, 1, 0, 0.002, 1),
-    (2798.75, 'MgII', 2700., 2900., 'MgII_br', 2, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05, 0.0015, 0, 0, 0, 0.05, 1),  #Qiaoya's
-    (2798.75, 'MgII', 2700., 2900., 'MgII_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4, 0.002, 0.01,   1, 1, 0, 0.002, 1),
-
-    (1908.73, 'CIII', 1700, 1970, 'CIII_br',   2, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05, 0.015, 99, 0, 0, 0.01, 1),
-    (1908.73, 'CIII', 1700, 1970, 'CIII_na',   1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    #(1892.03, 'CIII', 1700, 1970, 'SiIII1892', 1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.003, 1, 1, 0, 0.005, 1),
-    #(1857.40, 'CIII', 1700, 1970, 'AlIII1857', 1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.003, 1, 1, 0, 0.005, 1),
-    #(1816.98, 'CIII', 1700, 1970, 'SiII1816',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.0002, 1),
-    #(1786.7,  'CIII', 1700, 1970, 'FeII1787',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.0002, 1),
-    #(1750.26, 'CIII', 1700, 1970, 'NIII1750',  1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.001, 1),
-    #(1718.55, 'CIII', 1700, 1900, 'NIV1718',   1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015,  0.01,  1, 1, 0, 0.001, 1),
-
-    (1549.06, 'CIV', 1500, 1700, 'CIV_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05,   0.015, 0, 0, 0, 0.05 , 1),
-    (1549.06, 'CIV', 1500, 1700, 'CIV_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01,  1, 1, 0, 0.002, 1),
-    (1640.42, 'CIV', 1500, 1700, 'HeII1640',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
-    (1663.48, 'CIV', 1500, 1700, 'OIII1663',    1, 0.1, 0.0, 1e10, 1e-3, 5e-4,   0.0017, 0.008, 1, 1, 0, 0.002, 1),
-    (1640.42, 'CIV', 1500, 1700, 'HeII1640_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
-    (1663.48, 'CIV', 1500, 1700, 'OIII1663_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.0025, 0.02,   0.008, 1, 1, 0, 0.002, 1),
-
-    #(1402.06, 'SiIV', 1290, 1450, 'SiIV_OIV1', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
-    #(1396.76, 'SiIV', 1290, 1450, 'SiIV_OIV2', 1, 0.1, 0.0, 1e10, 5e-3, 0.002, 0.05,  0.015, 1, 1, 0, 0.05, 1),
-    #(1335.30, 'SiIV', 1290, 1450, 'CII1335',   1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015, 0.01,  1, 1, 0, 0.001, 1),
-    #(1304.35, 'SiIV', 1290, 1450, 'OI1304',    1, 0.1, 0.0, 1e10, 2e-3, 0.001, 0.015, 0.01,  1, 1, 0, 0.001, 1),
-
-    (1215.67, 'Lya', 1150, 1290, 'Lya_br', 1, 0.1, 0.0, 1e10, 5e-3, 0.004, 0.05,   0.02, 0, 0, 0, 0.05 , 1),
-    (1215.67, 'Lya', 1150, 1290, 'Lya_na', 1, 0.1, 0.0, 1e10, 1e-3, 5e-4,  0.0017, 0.01, 0, 0, 0, 0.002, 1)
-    ]
-
-    if oiii_wings:
-        recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.001, 1) )
-        recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007w',   1, 0.1, 0.0, 1e10, 3e-3, 2.3e-4, 0.004,  0.01,  2, 2, 0, 0.002, 1) )        
-
-    newdata = np.rec.array( recs, 
-    formats = 'float32,      a20,  float32, float32,      a20,  int32, float32, float32, float32, float32, float32, float32, float32,   int32,  int32,  int32,   float32, int32',
-    names  =  ' lambda, compname,   minwav,  maxwav, linename, ngauss,  inisca,  minsca,  maxsca,  inisig,  minsig,  maxsig,  voff,     vindex, windex,  findex,  fvalue,  vary')
-
-
-    # Header
-    hdr = fits.Header()
-    hdr['lambda'] = 'Vacuum Wavelength in Ang'
-    hdr['minwav'] = 'Lower complex fitting wavelength range'
-    hdr['maxwav'] = 'Upper complex fitting wavelength range'
-    hdr['ngauss'] = 'Number of Gaussians for the line'
-
-    # Can be set to negative for absorption lines if you want
-    hdr['inisca'] = 'Initial guess of line scale [flux]'
-    hdr['minsca'] = 'Lower range of line scale [flux]'
-    hdr['maxsca'] = 'Upper range of line scale [flux]'
-
-    hdr['inisig'] = 'Initial guess of linesigma [lnlambda]'
-    hdr['minsig'] = 'Lower range of line sigma [lnlambda]'  
-    hdr['maxsig'] = 'Upper range of line sigma [lnlambda]'
-
-    hdr['voff  '] = 'Limits on velocity offset from the central wavelength [lnlambda]'
-    hdr['vindex'] = 'Entries w/ same NONZERO vindex constrained to have same velocity'
-    hdr['windex'] = 'Entries w/ same NONZERO windex constrained to have same width'
-    hdr['findex'] = 'Entries w/ same NONZERO findex have constrained flux ratios'
-    hdr['fvalue'] = 'Relative scale factor for entries w/ same findex'
-
-    hdr['vary'] = 'Whether or not to vary the line parameters (set to 0 to fix the line parameters to initial values)'
-
-    # Save line info
-    hdu = fits.BinTableHDU(data=newdata, header=hdr, name='data')
-    hdu.writeto(os.path.join(path, fname), overwrite=True)
-    
-    return hdr, newdata
-
-
-
-def make_qsopar(path, fname='qsopar.fits', oiii_wings=True):    
-    """
-    Create parameter file
-    lambda    complexname  minwav maxwav linename     ngauss inisca minsca maxsca inisig minsig    maxsig  inidw mindw   maxdw  vindex windex findex fvalue varysca    varysig  varydw
-    """
-
-    recs = [
-    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_br',      3,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.015, 0.015, 0,     0,     0,    0.05 ,  1,        1,       1),
-    (6564.61, r'H$\alpha$', 6400, 6800, 'Ha_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002,  1,        1,       1),
-    (6549.85, r'H$\alpha$', 6400, 6800, 'NII6549',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     1,    0.001,  1,        1,       1),
-    (6585.28, r'H$\alpha$', 6400, 6800, 'NII6585',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     1,    0.003,  1,        1,       1),
-    (6718.29, r'H$\alpha$', 6400, 6800, 'SII6718',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     2,    0.001,  1,        1,       1),
-    (6732.67, r'H$\alpha$', 6400, 6800, 'SII6732',    1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -5e-3,  5e-3,  1,     1,     2,    0.001,  1,        1,       1),
-
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_br',       3,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.01,  0.01,  0,     0,     0,    0.01 ,  1,        1,       1),
-    (4862.68, r'H$\beta$', 4640, 5100, 'Hb_na',       1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002,  1,        1,       1),
-    (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959c',   1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     1,    0.333,  1,        1,       1),
-    (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007c',   1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00, -0.01,  0.01,  1,     1,     1,    1.000,  1,        1,       1),
-    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00,  -0.005, 0.005, 0,     0,     0,    0.001, 1,        1,       1),
-    (4687.02, r'H$\beta$', 4640, 5100, 'HeII4687_na', 1,     0.1,   0.0,   1e10,  1e-3,  2.3e-4,   0.0017, 0.00,  -0.005, 0.005, 1,     1,     0,    0.001, 1,        1,       1),
-
-    (3728.48, 'OII',       3650, 3800, 'OII3728',     1,     0.1,   0.0,   1e10,  1e-3,  3.333e-4, 0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.001,  1,        1,       1),
-
-    (2798.75, 'MgII',      2700, 2900, 'MgII_br',     2,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.015, 0.015, 0,     0,     0,    0.05,   1,        1,       1),
-    (2798.75, 'MgII',      2700, 2900, 'MgII_na',     1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002,  1,        1,       1),
-
-    (1908.73, 'CIII',      1700, 1970, 'CIII_br',     2,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.015, 0.015, 99,    0,     0,    0.01,   1,        1,       1),
-    (1908.73, 'CIII',      1700, 1970, 'CIII_na',     1,     0.1,   0.0,    1e10, 1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002,  1,        1,       1),
- 
-    (1549.06, 'CIV',       1500, 1700, 'CIV_br',      1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.015, 0.015, 0,     0,     0,    0.05 ,  1,        1,       1),
-    (1549.06, 'CIV',       1500, 1700, 'CIV_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  1,     1,     0,    0.002,  1,        1,       1),
-    (1640.42, 'CIV',       1500, 1700, 'HeII1640',    1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.008, 0.008, 1,     1,     0,    0.002,  1,        1,       1),
-    (1663.48, 'CIV',       1500, 1700, 'OIII1663',    1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.008, 0.008, 1,     1,     0,    0.002,  1,        1,       1),
-    (1640.42, 'CIV',       1500, 1700, 'HeII1640_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.0025,   0.02,   0.00, -0.008, 0.008, 1,     1,     0,    0.002,  1,        1,       1),
-    (1663.48, 'CIV',       1500, 1700, 'OIII1663_br', 1,     0.1,   0.0,   1e10,  5e-3,  0.0025,   0.02,   0.00, -0.008, 0.008, 1,     1,     0,    0.002,  1,        1,       1),
-
-    (1215.67, 'Lya',       1150, 1290, 'Lya_br',      1,     0.1,   0.0,   1e10,  5e-3,  0.004,    0.05,   0.00, -0.02,  0.02,  0,     0,     0,    0.05 ,  1,        1,       1),
-    (1215.67, 'Lya',       1150, 1290, 'Lya_na',      1,     0.1,   0.0,   1e10,  1e-3,  5e-4,     0.0017, 0.00, -0.01,  0.01,  0,     0,     0,    0.002,  1,        1,       1)]
-
-    if oiii_wings:
-        recs.append( (4960.30, r'H$\beta$', 4640, 5100, 'OIII4959w',   1,     0.1,   0.0,   1e10,  3e-3,  2.3e-4, 0.004,  0.00, -0.01,  0.01,  2,     2,     0,    0.001, 1,        1,       1) )
-        recs.append( (5008.24, r'H$\beta$', 4640, 5100, 'OIII5007w',   1,     0.1,   0.0,   1e10,  3e-3,  2.3e-4, 0.004,  0.00, -0.01,  0.01,  2,     2,     0,    0.002, 1,        1,       1) )
-
-
-    newdata = np.rec.array( recs,
-                            formats = 'float32, a20,      float32, float32, a20,      int32,  float32, float32, float32, float32, float32, float32, float32, float32, float32, int32, int32,  int32, float32, int32,   int32,  int32',
-                            names  =  'lambda, compname, minwav, maxwav, linename, ngauss, inisca, minsca, maxsca, inisig, minsig, maxsig, inidw,  mindw,  maxdw, vindex, windex, findex, fvalue, varysca, varysig, varydw')
-
-
-
-    # Header
-    hdr = fits.Header()
-    hdr['lambda'] = 'Vacuum Wavelength in Ang'
-    hdr['minwav'] = 'Lower complex fitting wavelength range'
-    hdr['maxwav'] = 'Upper complex fitting wavelength range'
-    hdr['ngauss'] = 'Number of Gaussians for the line'
-
-    # Can be set to negative for absorption lines if you want
-    hdr['inisca'] = 'Initial guess of line scale [flux]'
-    hdr['minsca'] = 'Lower range of line scale [flux]'
-    hdr['maxsca'] = 'Upper range of line scale [flux]'
-
-    hdr['inisig'] = 'Initial guess of linesigma [lnlambda]'
-    hdr['minsig'] = 'Lower range of line sigma [lnlambda]'  
-    hdr['maxsig'] = 'Upper range of line sigma [lnlambda]'
-
-    hdr['inidw'] = 'Initial guess of velocity offset [lnlambda]'
-    hdr['mindw'] = 'Lower range of velocity offset [lnlambda]'
-    hdr['maxdw'] = 'Upper range of velocity offset [lnlambda]'
-    
-    hdr['vindex'] = 'Entries w/ same NONZERO vindex constrained to have same velocity'
-    hdr['windex'] = 'Entries w/ same NONZERO windex constrained to have same width'
-    hdr['findex'] = 'Entries w/ same NONZERO findex have constrained flux ratios'
-    hdr['fvalue'] = 'Relative scale factor for entries w/ same findex'
-
-    hdr['varysca'] = 'Whether or not to vary the line scales (set to 0 to fix the line parameters to initial values)'
-    hdr['varysig'] = 'Whether or not to vary the line width (set to 0 to fix the line parameters to initial values)'
-    hdr['varydw'] = 'Whether or not to vary the line offsets (set to 0 to fix the line parameters to initial values)'
-
-    # Save line info
-    hdu = fits.BinTableHDU(data=newdata, header=hdr, name='data')
-    hdu.writeto(os.path.join(path, fname), overwrite=True)
-
-    return hdr, newdata
-
 
 
 #NEED TO REWORK THIS !!!!!!!!!!!!!!!!
@@ -351,12 +172,20 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     if line_name not in ['mg2', 'c4']:
         assert host_dir is not None, 'host_dir must be specified for non-MgII lines.'        
 
-    lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
-    flux = np.array(obj.table_arr[ind]['corrected_flux'])
-    err = np.array(obj.table_arr[ind]['corrected_err'])
-    
-    and_mask = np.array(obj.table_arr[ind]['ANDMASK'])
-    or_mask = np.array(obj.table_arr[ind]['ORMASK'])
+    if obj.processed:
+        lam = np.array(obj.table_arr[line_name][ind]['Wave[vaccum]'])
+        flux = np.array(obj.table_arr[line_name][ind]['corrected_flux'])
+        err = np.array(obj.table_arr[line_name][ind]['corrected_err'])
+        and_mask = np.array(obj.table_arr[line_name][ind]['ANDMASK'])
+        or_mask = np.array(obj.table_arr[line_name][ind]['ORMASK'])
+        
+    else:
+        lam = np.array(obj.table_arr[ind]['Wave[vaccum]'])
+        flux = np.array(obj.table_arr[ind]['corrected_flux'])
+        err = np.array(obj.table_arr[ind]['corrected_err'])
+        
+        and_mask = np.array(obj.table_arr[ind]['ANDMASK'])
+        or_mask = np.array(obj.table_arr[ind]['ORMASK'])
 
     epoch = obj.epochs[ind]
     mjd = obj.mjd[ind]
@@ -381,8 +210,10 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     elif line_name == 'ha':
         wave_range = np.array([6100, 7000])
         center = 6563
-
     
+
+    ##############################
+    # FeII
     
     if line_name in ['mg2', 'c4']:
         fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
@@ -390,16 +221,77 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
     else:
         fe_uv_params = np.array( list(obj.fe2_params[ind]) )[[1,3,5]]
         fe_op_params = np.array( list(obj.fe2_params[ind]) )[[7,9,11]]
+        
+        
+    if obj.o3_corr is not None:
+        fe_uv_params[0] = fe_uv_params[0] * obj.o3_corr['FluxCorr'][ind]
+        fe_uv_params[1] = fe_uv_params[1] * obj.o3_corr['CenterCorr'][ind]
+        
+        #Let's say that we focus on a given pixel from the spectrum x0
+        #QSOFit applies the FeII value from pixel x0*(1+shift) to x0
+        
+        #We want to apply the FeII value from pixel x0*(1+shift) to x1=x0*o3cc
+        #QSOFit will try to apply the FeII value from pixel x1*(1+shift) to x1
+        #In order to apply the FeII value from pixel x0*(1+shift) to x1, we need to change the shift to a new value, shift2
+        #   x1*(1+shift2) = x0*(1+shift)
+        #   shift2 = (x0/x1)*(1+shift) - 1
+        #          = (1/o3cc)*(1+shift) - 1
+
+        fe_uv_params[2] = (1/obj.o3_corr['CenterCorr'][ind])*(1+fe_uv_params[2]) - 1
+        
+        
+        if fe_op_params is not None:
+            fe_op_params[0] = fe_op_params[0] * obj.o3_corr['FluxCorr'][ind]
+            fe_op_params[1] = fe_op_params[1] * obj.o3_corr['CenterCorr'][ind]
+            fe_op_params[2] = (1/obj.o3_corr['CenterCorr'][ind])*(1+fe_op_params[2]) - 1
+        
+        
+    fit_fe2 = True
+    if obj.processed:
+        decompose_host = False
+        wave_range = None
+        fe_uv_params = None
+        fe_op_params = None
+        
+        fit_fe2 = False
+        
+    
+        
+    ##############################
+    # Host    
 
     if decompose_host:
-        flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
-                                                      host_dir + 'best_host_flux.dat', 
-                                                      z=obj.z)
+        if obj.o3_corr is not None:
+            flux, lam, err, and_mask, or_mask = remove_host_flux(lam/obj.o3_corr['CenterCorr'][ind], 
+                                                               flux/obj.o3_corr['FluxCorr'][ind], 
+                                                               err/obj.o3_corr['FluxCorr'][ind], 
+                                                               and_mask, or_mask,
+                                                               host_dir + 'best_host_flux.dat', 
+                                                               z=obj.z)
+            
+            lam *= obj.o3_corr['CenterCorr'][ind]
+            flux *= obj.o3_corr['FluxCorr'][ind]
+            err *= obj.o3_corr['FluxCorr'][ind]
+            
+        else:
+            flux, lam, err, and_mask, or_mask = remove_host_flux(lam, flux, err, and_mask, or_mask,
+                                                            host_dir + 'best_host_flux.dat', 
+                                                            z=obj.z)
         
+    ##############################
+    # Continuum
 
     poly = True
     if line_name is not None:
         poly = False
+        
+    pl_params = None
+    if obj.processed:
+        pl_params = [0, None]
+        poly = False
+        
+    ##############################
+    # Run fits
         
     masks = True        
     nburn = 100
@@ -411,10 +303,12 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
         new_lam = lam.copy()
         mask_ind = np.where( (and_mask == 0) & (and_mask == 0) , True, False)
         new_lam = new_lam[mask_ind]
-        
-        if new_lam[0] > center:
+
+        if ( np.min(new_lam) > center*(1+obj.z) - 300) or ( np.max(new_lam) < center*(1+obj.z) + 300):
             masks = False
 
+    if obj.processed:
+        masks = False
     
 
     name = 'RM{:03d}e{:03d}'.format(obj.rmid, epoch) + prefix    
@@ -423,32 +317,40 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)
         
-        qi.Fit(name=name, nsmooth=1, deredden=True, 
-                and_mask=masks, or_mask=masks,
-            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-            decompose_host=False, npca_gal=5, npca_qso=20, 
-            Fe_uv_op=True, poly=poly,
-            rej_abs_conti=False, rej_abs_line=rej_abs_line,
-            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
-            Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
-            save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
-            save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
+        with suppress_stdout_stderr():
+            qi.Fit(name=name, nsmooth=1, deredden=True, 
+                    and_mask=masks, or_mask=masks,
+                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                decompose_host=False, npca_gal=5, npca_qso=20, 
+                Fe_uv_op=fit_fe2, poly=poly,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
+                Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params, PL_fix=pl_params,
+                save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
+                save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
+        
+        if qi.wave.min() > center - 300:
+            raise Exception
+        if qi.wave.max() < center + 300:
+            raise Exception
+        
     except:
         masks = False
         
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir,
                     and_mask_in=and_mask, or_mask_in=or_mask)
         
-        qi.Fit(name=name, nsmooth=1, deredden=True, 
-                and_mask=masks, or_mask=masks,
-            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-            decompose_host=False, npca_gal=5, npca_qso=20, 
-            Fe_uv_op=True, poly=poly,
-            rej_abs_conti=False, rej_abs_line=rej_abs_line,
-            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
-            Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
-            save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
-            save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
+        with suppress_stdout_stderr():
+            qi.Fit(name=name, nsmooth=1, deredden=True, 
+                    and_mask=masks, or_mask=masks,
+                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                decompose_host=False, npca_gal=5, npca_qso=20, 
+                Fe_uv_op=fit_fe2, poly=poly,
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
+                Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params, PL_fix=pl_params,
+                save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
+                save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
 
     rerun1 = check_bad_run(qi, line_name)
@@ -461,16 +363,17 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
         n += 1
         qi = QSOFit(lam, flux, err, obj.z, ra=obj.ra, dec=obj.dec, plateid=plateid, mjd=int(mjd), fiberid=fiberid, path=qsopar_dir)
 
-        qi.Fit(name=name, nsmooth=1, deredden=True, 
-               and_mask=masks, or_mask=masks,
-            reject_badpix=False, wave_range=wave_range, wave_mask=None, 
-            decompose_host=False, npca_gal=5, npca_qso=20, 
-            Fe_uv_op=True, poly=poly, 
-            rej_abs_conti=False, rej_abs_line=rej_abs_line,
-            MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
-            Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params,
-            save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
-            save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
+        with suppress_stdout_stderr():
+            qi.Fit(name=name, nsmooth=1, deredden=True, 
+                and_mask=masks, or_mask=masks,
+                reject_badpix=False, wave_range=wave_range, wave_mask=None, 
+                decompose_host=False, npca_gal=5, npca_qso=20, 
+                Fe_uv_op=fit_fe2, poly=poly, 
+                rej_abs_conti=False, rej_abs_line=rej_abs_line,
+                MCMC=True, epsilon_jitter=1e-4, nburn=nburn, nsamp=nsamp, nthin=nthin, linefit=True, 
+                Fe_uv_fix=fe_uv_params, Fe_op_fix=fe_op_params, PL_fix=pl_params,
+                save_result=True, plot_fig=True, save_fig=True, plot_corner=False, kwargs_plot={'save_fig_path':output_dir}, 
+                save_fits_name=name+'_pyqsofit', save_fits_path=output_dir, verbose=False)
 
 
         rerun = check_bad_run(qi, line_name)
@@ -493,11 +396,11 @@ def run_pyqsofit(obj, ind, output_dir, qsopar_dir, line_name=None, prefix='', ho
 
 
 #Job function (per epoch)
-def job(ind, obj, res_dir, line_name=None, prefix='', host_dir=None, rej_abs_line=False):
+def job(ind, obj, res_dir, qsopar_dir, line_name=None, prefix='', host_dir=None, rej_abs_line=False):
 
     epoch = obj.epochs[ind]    
     epoch_dir = res_dir + 'epoch{:03d}/'.format(epoch)
-    qi = run_pyqsofit(obj, ind, epoch_dir, res_dir, line_name=line_name, prefix=prefix, 
+    qi = run_pyqsofit(obj, ind, epoch_dir, qsopar_dir, line_name=line_name, prefix=prefix, 
                       host_dir=host_dir, rej_abs_line=rej_abs_line)
     
     #Get line fitting results
@@ -797,7 +700,16 @@ def get_raw_br_prof(qi, line_name):
             s2_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
             
         
-        raw_prof = qi.flux - (na_prof + continuum + n2_prof + s2_prof)
+        #Get OI
+        oi_prof = np.zeros_like( qi.wave )
+        for p in range( len(gauss_result)//3 ):
+            if gauss_names[3*p + 2][:3] != 'OI6':
+                continue
+            
+            oi_prof += qi.Onegauss( np.log(qi.wave), gauss_result[3*p:3*(p+1)] )
+            
+        
+        raw_prof = qi.flux - (na_prof + continuum + n2_prof + s2_prof + oi_prof)
     
 
     ####################################################################
