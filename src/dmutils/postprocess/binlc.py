@@ -10,6 +10,8 @@ from matplotlib import gridspec
 import matplotlib.ticker as ticker
 from matplotlib.colors import ListedColormap
 import palettable
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 
 
 ############################################################################################################
@@ -148,8 +150,23 @@ def plot_binned_lcs(res, wl_bins,
     
     
     ### Plotting style ###
-    cmap = ListedColormap( palettable.cartocolors.qualitative.Vivid_10.mpl_colors )
-    colors = cmap.colors
+    # cmap = ListedColormap( palettable.cartocolors.qualitative.Vivid_10.mpl_colors )
+    # colors = cmap.colors
+
+    wlbin_centers = []
+    for j in range(len(wl_bins)-1):
+        wlbin_centers.append( (wl_bins[j]+wl_bins[j+1])/2. )
+
+    dwl = 500
+    maxdiff = np.inf
+    while np.abs(dwl - maxdiff) > 10:
+        maxdiff = np.max( np.abs(wlbin_centers - res.central_wl) )   
+        dwl -= 10
+        
+
+    norm = Normalize(vmin=res.central_wl-dwl, vmax=res.central_wl+dwl)
+    sm = ScalarMappable(norm=norm, cmap='coolwarm')
+
     
     #### Get data ####
     tau, psi1d = get_psi1d(res, wl_bins)
@@ -187,7 +204,7 @@ def plot_binned_lcs(res, wl_bins,
         for j in range(len(bins)-1):
             bin_centers.append( (bins[j]+bins[j+1])/2. )
         
-        ax3.bar(bin_centers, vals, color=colors[i%9], width=bins[1]-bins[0], fill=True, alpha=.7)
+        ax3.bar(bin_centers, vals, color=sm.to_rgba(wlbin_centers[i]), width=bins[1]-bins[0], fill=True, alpha=.7)
         ax3.axvline(np.median(downsampled_posteriors[i]), color='k', ls='--', lw=1.5)
         
 
@@ -195,12 +212,12 @@ def plot_binned_lcs(res, wl_bins,
         #--- Plot Psi
         scale = psi1d[2,:,i].max()*1.5
         ax1.plot(tau, psi1d[1,:,i]/scale, color='k')
-        ax1.fill_between(tau, psi1d[0,:,i]/scale, psi1d[2,:,i]/scale, color=colors[i%9], alpha=0.4)
+        ax1.fill_between(tau, psi1d[0,:,i]/scale, psi1d[2,:,i]/scale, color=sm.to_rgba(wlbin_centers[i]), alpha=0.4)
         
         #--- Plot LC
-        ax2.errorbar(xl-xl[0], yl[:,i], yerr=yerrl[:,i], fmt='o', ms=4, color=colors[9], mec='k', mew=.5)
+        ax2.errorbar(xl-xl[0], yl[:,i], yerr=yerrl[:,i], fmt='o', ms=4, color='k', mec='k', mew=.5)
         for j in range(yrecl.shape[0]):
-            ax2.plot(xl-xl[0], yrecl[j,:,i], color=colors[i%9], alpha=0.05, lw=.5)
+            ax2.plot(xl-xl[0], yrecl[j,:,i], color=sm.to_rgba(wlbin_centers[i]), alpha=0.05, lw=.5)
         
         ax1.set_xlim(psi_xlim)
         ax3.set_xlim(lag_xlim)
@@ -258,9 +275,9 @@ def plot_binned_lcs(res, wl_bins,
     #--- Plot continuum
     ax = fig.add_subplot(gs[-1,1], sharex=ax2)
 
-    ax.errorbar(xc-xl[0], yc, yerr=yerrc, fmt='o', ms=4, color=colors[9], mec='k', mew=.5)
+    ax.errorbar(xc-xl[0], yc, yerr=yerrc, fmt='o', ms=4, color='k', mec='k', mew=.5)
     for j in range(yrecc.shape[0]):
-        ax.plot(xrecc-xl[0], yrecc[j,:], color=colors[Nrow % 9], alpha=0.05, lw=.5)
+        ax.plot(xrecc-xl[0], yrecc[j,:], color='g', alpha=0.05, lw=.5)
         
     xmax = np.max([xl.max(), xrecc.max()])-xl[0]+100
     ax.set_xlim(left=-100, right=xmax)
