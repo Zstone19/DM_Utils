@@ -160,7 +160,7 @@ def plot_binned_lcs(res, wl_bins,
     dwl = 500
     maxdiff = np.inf
     while np.abs(dwl - maxdiff) > 10:
-        maxdiff = np.max( np.abs(wlbin_centers - res.central_wl) )   
+        maxdiff = np.max( np.abs( np.array(wlbin_centers) - res.central_wl) )   
         dwl -= 10
         
 
@@ -180,19 +180,19 @@ def plot_binned_lcs(res, wl_bins,
     Ncol = 3
 
     fig = plt.figure(figsize=(4*Ncol, 1.5*Nrow))
-    gs = gridspec.GridSpec(Nrow+1, Ncol, figure=fig, hspace=0, wspace=.05, width_ratios=[1,4,1])
+    gs = gridspec.GridSpec(Nrow+2, Ncol, figure=fig, hspace=0, wspace=.05, width_ratios=[1,4,1])
 
     for i in range(Nrow):
         
         if i == 0:
-            ax1 = fig.add_subplot(gs[i,0])
-            ax2 = fig.add_subplot(gs[i,1])
-            ax3 = fig.add_subplot(gs[i,2])
+            ax1 = fig.add_subplot(gs[i+2,0])
+            ax2 = fig.add_subplot(gs[i+2,1])
+            ax3 = fig.add_subplot(gs[i+2,2])
             
         else:
-            ax1 = fig.add_subplot(gs[i,0], sharex=ax1)
-            ax2 = fig.add_subplot(gs[i,1], sharex=ax2)
-            ax3 = fig.add_subplot(gs[i,2], sharex=ax3, sharey=ax3)
+            ax1 = fig.add_subplot(gs[i+2,0], sharex=ax1)
+            ax2 = fig.add_subplot(gs[i+2,1], sharex=ax2)
+            ax3 = fig.add_subplot(gs[i+2,2], sharex=ax3, sharey=ax3)
 
         
         
@@ -205,8 +205,11 @@ def plot_binned_lcs(res, wl_bins,
             bin_centers.append( (bins[j]+bins[j+1])/2. )
         
         ax3.bar(bin_centers, vals, color=sm.to_rgba(wlbin_centers[i]), width=bins[1]-bins[0], fill=True, alpha=.7)
-        ax3.axvline(np.median(downsampled_posteriors[i]), color='k', ls='--', lw=1.5)
+        ax3.axvline(np.median(downsampled_posteriors[i]), color='k', lw=1.5)
         
+        loval, hival = np.percentile(downsampled_posteriors[i], [16, 84])
+        ax3.axvline(loval, color='k', lw=1, ls='--')
+        ax3.axvline(hival, color='k', lw=1, ls='--')
 
         
         #--- Plot Psi
@@ -232,14 +235,14 @@ def plot_binned_lcs(res, wl_bins,
         ax2.tick_params('y', which='both', length=0)
         ax3.tick_params('y', which='both', length=0)
             
-        
-        ax2.tick_params('x', labelsize=0)
         ax3.tick_params('x', labelsize=0)
         if i != Nrow - 1:
             ax1.tick_params('x', labelsize=0)
+            ax2.tick_params('x', labelsize=0)
             ax3.tick_params('x', labelsize=0)
         else:
             ax1.tick_params('x', labelsize=10)
+            ax2.tick_params('x', labelsize=10)
             ax3.tick_params('x', labelsize=10)
         
         
@@ -254,6 +257,7 @@ def plot_binned_lcs(res, wl_bins,
         
         if i == Nrow-1:
             ax1.set_xlabel(r'$\tau$ [d]', fontsize=14) 
+            ax2.set_xlabel('Time [d]', fontsize=14)
             ax3.set_xlabel(r'$\tau$ [d]', fontsize=14)
             
         ymax = np.max([yl[:,i].max(), yrecl[:,:,i].max()])*1.1
@@ -264,27 +268,27 @@ def plot_binned_lcs(res, wl_bins,
         ax2.text(.01, .7, txt, fontsize=11, transform=ax2.transAxes, ha='left', va='bottom') 
         
         txt = val2latex(downsampled_posteriors[i], 0)
-        ax3.text(.97, .7, txt, fontsize=10, transform=ax3.transAxes, ha='right', va='bottom')
-        
-        if i == 0:
-            ax1.set_title(r'$\rm \psi(\tau)$', fontsize=14)
-            ax2.set_title('Flux', fontsize=14)
-            ax3.set_title('Lag', fontsize=14)
+        ax2.text(.99, .6, txt, fontsize=13, transform=ax2.transAxes, ha='right', va='bottom')
 
             
-    #--- Plot continuum
-    ax = fig.add_subplot(gs[-1,1], sharex=ax2)
+    ### Plot continuum ###
+    ax = fig.add_subplot(gs[0,1], sharex=ax2)
+    ax.set_title('Flux', fontsize=14)
 
-    ax.errorbar(xc-xl[0], yc, yerr=yerrc, fmt='o', ms=4, color='k', mec='k', mew=.5)
+    _, _, bars = ax.errorbar(xc-xl[0], yc, yerr=yerrc, fmt='.', color='k', ms=2)
+    [bar.set_alpha(0.25) for bar in bars]
     for j in range(yrecc.shape[0]):
-        ax.plot(xrecc-xl[0], yrecc[j,:], color='g', alpha=0.05, lw=.5)
+        ax.plot(xrecc-xl[0], yrecc[j,:], color='forestgreen', alpha=0.05, lw=.5)
         
     xmax = np.max([xl.max(), xrecc.max()])-xl[0]+100
     ax.set_xlim(left=-100, right=xmax)
 
     ax.tick_params('y', labelsize=0)
-    ax.tick_params('both', which='major', length=5)
-    ax.tick_params('both', which='minor', length=2)
+    ax.tick_params('y', which='both', length=0)
+    ax.tick_params('x', which='major', length=5)
+    ax.tick_params('x', which='minor', length=2)
+    ax.tick_params('x', labelsize=0)
+
 
     ax.xaxis.set_major_locator(ticker.MaxNLocator(10))
     ax.yaxis.set_major_locator(ticker.MaxNLocator(3))
@@ -292,8 +296,88 @@ def plot_binned_lcs(res, wl_bins,
     ymax = np.max([yc.max(), yrecc[:,:].max()])*1.25
     ax.set_ylim(top=ymax)
 
-    ax.text(.01, .7, 'Continuum', fontsize=11, transform=ax.transAxes, ha='left', va='bottom') 
-    ax.set_xlabel(r'Time [d]', fontsize=14)
+    ax.text(.01, .7, 'Continuum', fontsize=12, transform=ax.transAxes, ha='left', va='bottom') 
+    
+    
+    
+    ### Plot integrated ###
+    tau, psi1d = get_psi1d(res, [0, np.inf])
+    xl, yl, yerrl, yrecl = get_binned_lcs(res, [0, np.inf])
+    xc, yc, yerrc, xrecc, yrecc = get_cont_lc(res)
+    downsampled_posteriors = get_lag_dists(res, [0, np.inf])
+
+    ax1 = fig.add_subplot(gs[1,0], sharex=ax1)
+    ax2 = fig.add_subplot(gs[1,1], sharex=ax2)
+    ax3 = fig.add_subplot(gs[1,2], sharex=ax3, sharey=ax3)
+    
+    #--- Plot lag dist
+    vals, bins = np.histogram(downsampled_posteriors[0], bins=lag_nbin, range=[0,150], density=False)
+    vals = vals/np.max(vals) * .7
+    
+    bin_centers = []
+    for j in range(len(bins)-1):
+        bin_centers.append( (bins[j]+bins[j+1])/2. )
+    
+    ax3.bar(bin_centers, vals, color='m', width=bins[1]-bins[0], fill=True, alpha=.7)
+    ax3.axvline(np.median(downsampled_posteriors[0]), color='k', lw=1.5)
+    
+    loval, hival = np.percentile(downsampled_posteriors[0], [16, 84])
+    ax3.axvline(loval, color='k', lw=1, ls='--')
+    ax3.axvline(hival, color='k', lw=1, ls='--')
+
+    
+    #--- Plot Psi
+    scale = psi1d[2,:,0].max()*1.5
+    ax1.plot(tau, psi1d[1,:,0]/scale, color='k')
+    ax1.fill_between(tau, psi1d[0,:,0]/scale, psi1d[2,:,0]/scale, color='m', alpha=0.4)
+    
+    #--- Plot LC
+    ax2.errorbar(xl-xl[0], yl[:,0], yerr=yerrl[:,0], fmt='o', ms=4, color='k', mec='k', mew=.5)
+    for j in range(yrecl.shape[0]):
+        ax2.plot(xl-xl[0], yrecl[j,:,0], color='m', alpha=0.05, lw=.5)
+    
+    ax1.set_xlim(psi_xlim)
+    ax3.set_xlim(lag_xlim)
+    ax3.set_ylim(0, 1) 
+    for a in [ax1, ax2, ax3]:
+        a.set_yticklabels([])
+        a.tick_params('both', which='major', length=5)
+        a.tick_params('both', which='minor', length=2)
+        
+        
+    ax1.tick_params('y', which='both', length=0)
+    ax2.tick_params('y', which='both', length=0)
+    ax3.tick_params('y', which='both', length=0)
+        
+    ax1.tick_params('x', labelsize=0)    
+    ax2.tick_params('x', labelsize=0)
+    ax3.tick_params('x', labelsize=0)
+    
+
+    ax1.xaxis.set_major_locator(ticker.MaxNLocator(4))
+    ax1.yaxis.set_major_locator(ticker.MaxNLocator(3))
+    
+    ax3.xaxis.set_major_locator(ticker.MaxNLocator(4))
+    ax3.yaxis.set_major_locator(ticker.MaxNLocator(3))    
+    
+    ax2.xaxis.set_major_locator(ticker.MaxNLocator(10))
+    ax2.yaxis.set_major_locator(ticker.MaxNLocator(3))    
+        
+    ymax = np.max([yl[:,0].max(), yrecl[:,:,0].max()])*1.1
+    ax2.set_ylim(top=ymax)
+        
+        
+    ax2.text(.01, .7, 'Integrated', fontsize=12, transform=ax2.transAxes, ha='left', va='bottom') 
+    
+    txt = val2latex(downsampled_posteriors[0], 0)
+    ax2.text(.99, .6, txt, fontsize=13, transform=ax2.transAxes, ha='right', va='bottom')
+    
+    ax1.set_title(r'$\rm \psi(\tau)$', fontsize=14)
+    ax3.set_title('Lag', fontsize=14)
+    
+    
+    
+    
     
     if output_fname is not None:
         plt.savefig(output_fname, bbox_inches='tight', dpi=300)
