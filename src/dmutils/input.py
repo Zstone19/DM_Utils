@@ -42,7 +42,8 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
 
 
-def make_input_file(fnames, tol_fnames, central_wl, times, z, output_fname, 
+def make_input_file(fnames, central_wl, times, z, output_fname, 
+                    tol_fnames=None,
                     time_bounds=None, wl_bounds=None, 
                     nbin=None, tol=5e-2):
     
@@ -102,13 +103,14 @@ def make_input_file(fnames, tol_fnames, central_wl, times, z, output_fname,
     wl_tot = []
     prof_tot = []
     err_tot = []
-    bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
     
     if wl_bounds is not None:
         if wl_bounds[0] > bounds[0]:
             bounds[0] = wl_bounds[0]
         if wl_bounds[1] < bounds[1]:
             bounds[1] = wl_bounds[1]
+    else:
+        bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
     
 
     if time_bounds is not None:
