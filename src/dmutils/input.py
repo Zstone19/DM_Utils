@@ -105,10 +105,7 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     err_tot = []
     
     if wl_bounds is not None:
-        if wl_bounds[0] > bounds[0]:
-            bounds[0] = wl_bounds[0]
-        if wl_bounds[1] < bounds[1]:
-            bounds[1] = wl_bounds[1]
+        bounds = wl_bounds
     else:
         bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
     
