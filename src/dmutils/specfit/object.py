@@ -255,8 +255,8 @@ class Object:
         mask = (self.mjd >= xmin) & (self.mjd <= xmax)
 
         input.make_input_file(fnames[mask], 
-                             central_wl, self.mjd[mask], self.z, output_fname, n
-                             tol_fnames[mask], bin=nbin, tol=tol)
+                             central_wl, self.mjd[mask], self.z, output_fname,
+                             tol_fnames[mask], nbin=nbin, tol=tol)
         self.line2d_filename = output_fname
 
         return
