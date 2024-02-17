@@ -125,7 +125,7 @@ def plot_mult(res_arr, res_names=None,
     
 
     fig = plt.figure(figsize=(20, 5*nres))
-    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.35, wspace=.2, width_ratios=[1, 1, 1])
+    gs_tot = gridspec.GridSpec(nres, 3, figure=fig, hspace=.25, wspace=.2, width_ratios=[1, 1, 1])
     
     for i, res in enumerate(res_arr):
         gs_i = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=gs_tot[i,:2], wspace=.08)
@@ -142,8 +142,27 @@ def plot_mult(res_arr, res_names=None,
         ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
                                              vmin=arrs[3][i][0], vmax=arrs[3][i][1],
                                              show=False)
-    
-        ytxt = 1 - (2*i + 1)/(2*nres)
+        
+        
+        #Set cloud labels
+        if i == 0:
+            ax_clouds[0].set_title('Side View', fontsize=22)
+            ax_clouds[1].set_title('Observer POV', fontsize=22)
+        if i == len(res_arr)-1:
+            ax_clouds[0].set_xlabel('x [lt-d]', fontsize=20)
+            ax_clouds[1].set_xlabel('y [lt-d]', fontsize=20)
+
+
+        #Set transfer function labels
+        if i == 0:
+            ax_tf.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=22)
+        if i == len(res_arr)-1:
+            ax_tf.set_xlabel(r'Velocity [$\rm 10^3 \; km \ s^{-1} $]', fontsize=20)
+
+
+        #Set the names of each result (row)
+        l, b, w, h = ax_tf.get_position().bounds
+        ytxt = b + h/2
         plt.figtext(.94, ytxt, res_names[i], fontsize=30, rotation=270, va='center', ha='center')
 
 
@@ -194,9 +213,9 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=Fal
     fig = plt.figure(figsize=(25, 5*nres))
     
     if include_res:
-        gs_tot = gridspec.GridSpec(nres, 6, figure=fig, hspace=.3, wspace=.2)
+        gs_tot = gridspec.GridSpec(nres, 6, figure=fig, hspace=.2, wspace=.2)
     else:
-        gs_tot = gridspec.GridSpec(nres, 4, figure=fig, hspace=.5, wspace=.2)
+        gs_tot = gridspec.GridSpec(nres, 4, figure=fig, hspace=.2, wspace=.2)
     
     for i, res in enumerate(res_arr):
         
@@ -223,13 +242,32 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=Fal
             ax2 = fig.add_subplot(gs_r[1], sharex=ax1)
             ax_lc = [ax1, ax2]
         
+        
         ax_2d = res.line2d_plot(include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
         ax_lc = res.lc_fits_plot(inflate_err=inflate_err, ax=ax_lc, show=False)
         
-            
-        ytxt = 1 - (2*i + 1)/(2*nres)
-        plt.figtext(.97, ytxt, res_names[i], fontsize=30, rotation=270, va='center', ha='center')
 
+        #Set labels on the line2d plots
+        prof_titles = ['Data', 'Model', 'Residuals']
+        ff = 2
+        if i == 0:    
+            for n in range(len(ax_2d)):
+                ax_2d[n].set_title(prof_titles[n], fontsize=16*ff)
+
+        if i == len(res_arr)-1:
+            for n in range(len(ax_2d)):
+                ax_2d[n].set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=11*ff, labelpad=10)
+
+
+        #Set labels on the LC plots
+        if i == len(res_arr)-1:
+            ax_lc[-1].set_xlabel('MJD', fontsize=15*ff)
+
+
+        #Set the names of each result (row)
+        l, b, w, h = ax_lc[0].get_position().bounds
+        ytxt = b
+        plt.figtext(.97, ytxt, res_names[i], fontsize=30, rotation=270, va='center', ha='center')
 
     if output_fname is not None:
         plt.savefig(output_fname, bbox_inches='tight', dpi=200)
@@ -333,7 +371,7 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
 
 
     ascii.write(dat, output=output_fname, Writer=ascii.Latex,
-                latexdict=custom_dict)
+                latexdict=custom_dict, overwrite=True)
 
     return
 

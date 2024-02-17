@@ -100,8 +100,14 @@ class Result:
                     include_res=True,
                     ax=None, output_fname=None, show=False):
 
+
+        if ax is None:
+            ax_in = False
+        else:
+            ax_in = True
+
         c = const.c.cgs.value
-        ff = 2
+        ff = 1.5
         
         idx, _ = self.bp.find_max_prob()
         model_flux = self.bp.results['line2d_rec'][idx]
@@ -109,6 +115,8 @@ class Result:
         
         vmin = np.min([np.min(model_flux), np.min(data_flux)])
         vmax = np.max([np.max(model_flux), np.max(data_flux)])
+        
+        vmin = np.max([0, vmin])
 
 
         if ax is None:
@@ -211,14 +219,19 @@ class Result:
         #Aesthetics
         
         ax[0].set_ylabel('MJD', fontsize=13*ff, labelpad=10)
-        ax[0].set_title('Data', fontsize=16*ff)
-        ax[1].set_title('Model', fontsize=16*ff)
         
-        if include_res:
+        if not ax_in:
+            ax[0].set_title('Data', fontsize=16*ff)
+            ax[1].set_title('Model', fontsize=16*ff)
+        
+        if (include_res) & (not ax_in):
             ax[2].set_title('Residuals', fontsize=16*ff)
         
         for a in ax:
-            a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=11*ff, labelpad=10)
+            
+            if not ax_in:
+                a.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=11*ff, labelpad=5)
+
             a.tick_params('both', which='major', length=6)
             a.tick_params('both', which='minor', length=3)
             a.tick_params('both', labelsize=10*ff)
@@ -256,6 +269,12 @@ class Result:
                                  vmin=None, vmax=None,
                                  ax=None, output_fname=None, show=False):
         
+        if ax is None:
+            ax_in = False
+        else:
+            ax_in = True
+
+        
         c = const.c.cgs.value
         G = const.G.cgs.value
         Msol = const.M_sun.cgs.value
@@ -285,24 +304,28 @@ class Result:
 
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
-                    extent=[vel_vals[0], vel_vals[-1],t_vals[0], t_vals[-1]],
+                    extent=[vel_vals[0]/1000, vel_vals[-1]/1000, t_vals[0], t_vals[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
                     vmin=vmin, vmax=vmax)
 
-        ax.plot(vel_vals, env_vals, color='c', ls='--', lw=2)
+        ax.plot(vel_vals/1000, env_vals, color='c', ls='--', lw=2)
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
             
         if xbounds is not None:
             ax.set_xlim(xbounds[0], xbounds[1])
+            
+            if not ax_in:
+                ax.set_xlabel(r'Velocity [$\rm 10^3 \; km \ s^{-1} $]', fontsize=16)
 
         ax.set_ylabel('Lag [d]', fontsize=16)
-        ax.set_xlabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=16)
-
+        
         cbar = plt.colorbar(im, ax=ax, pad=.01, aspect=15)
         cbar.ax.tick_params('both', labelsize=14)
-        ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
+
+        if not ax_in:
+            ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
 
         ax.axvline(0, color='c', ls='--', lw=2)
 
@@ -362,6 +385,12 @@ class Result:
         """
 
 
+        if ax is None:
+            ax_in = False
+        else:
+            ax_in = True
+
+
         inc = np.median(self.bp.results['sample'][:,3])
         
         cloud_dat = np.loadtxt(self.cloud_fname)
@@ -398,15 +427,17 @@ class Result:
         
         ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
                     marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
-        ax[0].set_xlabel('x [lt-d]', fontsize=18)
-        ax[0].set_ylabel('z [lt-d]', fontsize=18)
-        ax[0].set_title('Side View', fontsize=22)
+        ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
-        ax[1].set_xlabel('y [lt-d]', fontsize=18)
-        ax[1].set_title('Observer POV', fontsize=22)
+        
+        if not ax_in:
+            ax[0].set_xlabel('x [lt-d]', fontsize=20)
+            ax[1].set_xlabel('y [lt-d]', fontsize=20)
+            ax[0].set_title('Side View', fontsize=22)
+            ax[1].set_title('Observer POV', fontsize=22)
 
         if bounds is not None:
             for a in ax:
@@ -582,6 +613,11 @@ class Result:
 
     def lc_fits_plot(self, inflate_err=False, ax=None, output_fname=None, show=False):
         
+        if ax is None:
+            ax_in = False
+        else:
+            ax_in = True
+        
         c = const.c.cgs.value
         ff = 2
         
@@ -651,9 +687,11 @@ class Result:
         
         ######################################################
         
-        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=14*ff, rotation=270, labelpad=30)
-        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=14*ff, rotation=270, labelpad=30)
-        ax[-1].set_xlabel('MJD', fontsize=15*ff)
+        ax[0].set_ylabel(r'$F_{\rm cont}$', fontsize=14*ff, rotation=270, labelpad=35)
+        ax[1].set_ylabel(r'$F_{ \rm ' + self.line_name + r'}$', fontsize=14*ff, rotation=270, labelpad=35)
+        
+        if not ax_in:
+            ax[-1].set_xlabel('MJD', fontsize=15*ff)
         
         for a in ax:
             a.tick_params('both', which='major', length=8)
@@ -867,7 +905,7 @@ class Result:
         """
         
         fig = plt.figure(figsize=(12, 7))
-        gs_tot = gridspec.GridSpec(2, 12, figure=fig, hspace=.4, height_ratios=[1,1.1])
+        gs_tot = gridspec.GridSpec(2, 12, figure=fig, hspace=.5, height_ratios=[1,1.1])
         
         
         #TOP: Profiles
@@ -888,6 +926,16 @@ class Result:
         
         ax_top = self.line2d_plot(xbounds=line_xbounds, ax=ax_top, show=False)
         
+            #Set line2d labels
+        prof_titles = ['Data', 'Model', 'Residuals']
+        ff = 1.5  
+        for n in range(len(ax_top)):
+            ax_top[n].set_title(prof_titles[n], fontsize=16*ff)
+            ax_top[n].set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=11*ff, labelpad=10)
+
+
+        
+        
         
         gs_bot = gridspec.GridSpecFromSubplotSpec(1, 3, subplot_spec=gs_tot[1,:], 
                                                   width_ratios=[1.5,1,1], wspace=.1)
@@ -896,6 +944,13 @@ class Result:
         ax_bl = fig.add_subplot(gs_bot[0])
         ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
         
+            #Set tf labels
+        ax_bl.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
+        ax_bl.set_xlabel(r'Velocity [$\rm km \ s^{-1} $]', fontsize=16)
+        
+        
+        
+        
         #BOTTOM RIGHT: LC Fits
         gs_br = gridspec.GridSpecFromSubplotSpec(2, 1, subplot_spec=gs_bot[1:])
         ax1 = fig.add_subplot(gs_br[0])
@@ -903,6 +958,10 @@ class Result:
         ax_br = [ax1, ax2]
         
         ax_br = self.lc_fits_plot(ax=ax_br, show=False)
+        
+        
+            #Set lc labels
+        ax_br[-1].set_xlabel('MJD', fontsize=15*ff)
         
         
 
@@ -942,6 +1001,12 @@ class Result:
         ax_tr = [ax1, ax2]
         
         ax_tr = self.plot_clouds(colorbar=True, bounds=bounds, ax=ax_tr, show=False)
+        
+            #Set cloud labels
+        ax_tr[0].set_title('Side View', fontsize=22)
+        ax_tr[1].set_title('Observer POV', fontsize=22)
+        ax_tr[0].set_xlabel('x [lt-d]', fontsize=20)
+        ax_tr[1].set_xlabel('y [lt-d]', fontsize=20)
         
         
         #BOTTOM RIGHT: Posteriors
