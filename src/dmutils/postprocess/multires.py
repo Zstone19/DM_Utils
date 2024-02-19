@@ -20,6 +20,10 @@ def isnone(arr):
     else:    
         return (arr is None)
     
+    
+def text_format(vals):
+    return '{:.2f}'.format(np.median(vals))
+    
 
 
 def plot_mult(res_arr, res_names=None, 
@@ -284,7 +288,12 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=Fal
 
 
 
-def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
+def latex_table_mult(res_arr, print_err=True, res_names=None, output_fname=sys.stdout):
+
+    if print_err:
+        format_func = val2latex
+    else:
+        format_func = text_format
 
     assert len(res_arr) > 0
     nres = len(res_arr)
@@ -341,20 +350,20 @@ def latex_table_mult(res_arr, res_names=None, output_fname=sys.stdout):
                 name_ind = np.argwhere( names_tot == name )[0][0]
                 
                 if name in logparam_names:
-                    values[i, name_ind] = val2latex(  res.bp.results['sample'][:,j]/np.log(10)  )
+                    values[i, name_ind] = format_func(  res.bp.results['sample'][:,j]/np.log(10)  )
                 elif name == 'BLR model ln(Mbh)':
                     mbh_samps = res.bp.results['sample'][:,j]/np.log(10) + 6
-                    values[i, name_ind] = val2latex( mbh_samps )
+                    values[i, name_ind] = format_func( mbh_samps )
                 elif name == 'BLR model Inc':
-                    values[i, name_ind] = val2latex(res.bp.results['sample'][:,j]*180/np.pi )
+                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j]*180/np.pi )
                 elif name == 'sys_err_line':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = val2latex( (np.exp(vals) - 1.0) * np.mean(line_lc_err) )
+                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(line_lc_err) )
                 elif name == 'sys_err_con':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = val2latex( (np.exp(vals) - 1.0) * np.mean(yerr_cont) )
+                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(yerr_cont) )
                 else:
-                    values[i, name_ind] = val2latex(res.bp.results['sample'][:,j])
+                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j])
 
     colnames = np.hstack([ ['Parameter', 'Unit'], res_names ])
     table_input = np.vstack([latex_names, units, values]).T
