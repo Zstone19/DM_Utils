@@ -349,7 +349,8 @@ class Result:
             return fig, ax
 
 
-    def plot_clouds(self, rotate=False, skip=10, bounds=[-10,10], 
+    def plot_clouds(self, rotate=False, skip=10, bounds=[-10,10],
+                    plot_rblr=True, 
                     colorbar=False, vmin=None, vmax=None,
                     ax=None, output_fname=None, show=False):
         
@@ -392,6 +393,7 @@ class Result:
 
 
         inc = np.median(self.bp.results['sample'][:,3])
+        rblr = 10**np.median(self.bp.results['sample'][:,0])
         
         cloud_dat = np.loadtxt(self.cloud_fname)
         x_vals = cloud_dat[:,0]
@@ -403,17 +405,54 @@ class Result:
         vy_vals = cloud_dat[:,4]
         vz_vals = cloud_dat[:,5]
         
+        x_rblr = np.linspace(bounds[0], bounds[1], 5000)
+        y_rblr1 = np.sqrt(rblr**2 - x_rblr**2)
+        y_rblr2 = -y_rblr1.copy()
+        z_rblr = np.zeros_like(x_rblr)
+        
+        
+        zmin = (bounds[0] + bounds[1])/2 - (bounds[1]-bounds[0])/10
+        zmax = (bounds[0] + bounds[1])/2 + (bounds[1]-bounds[0])/10
+        xline1 = np.full( 1000, -rblr )
+        zline1 = np.zeros(zmin, zmax, 1000)
+        xline2 = np.full( 1000, rblr )
+        zline2 = zline1.copy()
+        
         
         if rotate:
-            x_vals = x_vals*np.cos(-inc) + z_vals*np.sin(-inc)
-            y_vals = y_vals
-            z_vals = -x_vals*np.sin(-inc) + z_vals*np.cos(-inc)
-
-            vx_vals = vx_vals*np.cos(-inc) + vz_vals*np.sin(-inc)
-            vy_vals = vy_vals
-            vz_vals = -vx_vals*np.sin(-inc) + vz_vals*np.cos(-inc)
+            x_vals0 = x_vals.copy()
+            y_vals0 = y_vals.copy()
+            z_vals0 = z_vals.copy()
+            vx_vals0 = vx_vals.copy()
+            vy_vals0 = vy_vals.copy()
+            vz_vals0 = vz_vals.copy()
             
-        
+            #Rotate so that the disk is flat along the x-axis
+            x_vals = x_vals0*np.cos(-inc) + z_vals0*np.sin(-inc)
+            y_vals = y_vals0
+            z_vals = -x_vals0*np.sin(-inc) + z_vals0*np.cos(-inc)
+
+            vx_vals = vx_vals0*np.cos(-inc) + vz_vals0*np.sin(-inc)
+            vy_vals = vy_vals0
+            vz_vals = -vx_vals0*np.sin(-inc) + vz_vals0*np.cos(-inc)
+                        
+        else:
+            x_rblr0 = x_rblr.copy()
+            z_rblr0 = z_rblr.copy()
+            
+            xline10 = xline1.copy()
+            zline10 = zline1.copy()
+            xline20 = xline2.copy()
+            zline20 = zline2.copy()
+            
+            #Rotate so that the radius drawing matches the disk inclination
+            x_rblr = x_rblr0*np.cos(inc) + z_rblr0*np.sin(inc)
+            z_rblr = -x_rblr0*np.sin(inc) + z_rblr0*np.cos(inc)
+            
+            xline1 = xline10*np.cos(inc) + zline10*np.sin(inc)
+            zline1 = -xline10*np.sin(inc) + zline10*np.cos(inc)
+            xline2 = xline20*np.cos(inc) + zline20*np.sin(inc)
+            zline2 = -xline20*np.sin(inc) + zline20*np.cos(inc)
         
         
         
@@ -432,6 +471,15 @@ class Result:
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
+        
+
+        if plot_rblr:
+            ax[1].plot(y_rblr1, z_rblr, color='k', ls='--', lw=1.5)
+            ax[1].plot(y_rblr2, z_rblr, color='k', ls='--', lw=1.5)
+            
+            ax[0].plot(xline1, zline1, color='k', ls='--', lw=1.5)
+            ax[0].plot(xline2, zline2, color='k', ls='--', lw=1.5)
+
         
         if not ax_in:
             ax[0].set_xlabel('x [lt-d]', fontsize=20)
@@ -982,7 +1030,7 @@ class Result:
     
     
     
-    def summary2(self, bounds=[-50, 50], weight=True, output_fname=None, show=False):
+    def summary2(self, bounds=[-50, 50], plot_rblr=True, weight=True, output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
         gs_tot = gridspec.GridSpec(2, 4, figure=fig, wspace=.1)
@@ -1000,7 +1048,7 @@ class Result:
         ax2 = fig.add_subplot(gs_tr[1], sharey=ax1, sharex=ax1)
         ax_tr = [ax1, ax2]
         
-        ax_tr = self.plot_clouds(colorbar=True, bounds=bounds, ax=ax_tr, show=False)
+        ax_tr = self.plot_clouds(plot_rblr=plot_rblr, colorbar=True, bounds=bounds, ax=ax_tr, show=False)
         
             #Set cloud labels
         ax_tr[0].set_title('Side View', fontsize=22)

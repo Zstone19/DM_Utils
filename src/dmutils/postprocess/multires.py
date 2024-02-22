@@ -29,6 +29,7 @@ def text_format(vals):
 def plot_mult(res_arr, res_names=None, 
               bounds_arr=None, tf_ymax_arr=None, tf_xbounds_arr=None, 
               cloud_cbar_range=None, tf_cbar_range=None,
+              plot_rblr=True,
               output_fname=None, show=False):
     
     assert len(res_arr) > 0
@@ -140,7 +141,7 @@ def plot_mult(res_arr, res_names=None,
         ax_tf = fig.add_subplot(gs_tot[i,2])
 
         ax_clouds = res.plot_clouds(colorbar=True, bounds=arrs[0][i], ax=ax_clouds, 
-                                    vmin=arrs[2][i][0], vmax=arrs[2][i][1], 
+                                    vmin=arrs[2][i][0], vmax=arrs[2][i][1], plot_rblr=plot_rblr,
                                     show=False)
         
         ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
