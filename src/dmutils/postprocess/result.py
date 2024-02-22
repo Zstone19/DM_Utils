@@ -474,11 +474,11 @@ class Result:
         
 
         if plot_rblr:
-            ax[1].plot(y_rblr1, z_rblr, color='k', ls='--', lw=2)
-            ax[1].plot(y_rblr2, z_rblr, color='k', ls='--', lw=2)
+            ax[1].plot(y_rblr1, z_rblr, color='k', ls='-', lw=3)
+            ax[1].plot(y_rblr2, z_rblr, color='k', ls='-', lw=3)
             
-            ax[0].plot(xline1, zline1, color='k', ls='--', lw=2)
-            ax[0].plot(xline2, zline2, color='k', ls='--', lw=2)
+            ax[0].plot(xline1, zline1, color='k', ls='-', lw=3)
+            ax[0].plot(xline2, zline2, color='k', ls='-', lw=3)
 
         
         if not ax_in:
