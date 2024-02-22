@@ -414,7 +414,7 @@ class Result:
         zmin = (bounds[0] + bounds[1])/2 - (bounds[1]-bounds[0])/10
         zmax = (bounds[0] + bounds[1])/2 + (bounds[1]-bounds[0])/10
         xline1 = np.full( 1000, -rblr )
-        zline1 = np.zeros(zmin, zmax, 1000)
+        zline1 = np.linspace(zmin, zmax, 1000)
         xline2 = np.full( 1000, rblr )
         zline2 = zline1.copy()
         
