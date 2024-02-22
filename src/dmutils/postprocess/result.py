@@ -393,7 +393,7 @@ class Result:
 
 
         inc = np.median(self.bp.results['sample'][:,3])
-        rblr = 10**np.median(self.bp.results['sample'][:,0])
+        rblr = 10**np.median(self.bp.results['sample'][:,0]/np.log(10))
         
         cloud_dat = np.loadtxt(self.cloud_fname)
         x_vals = cloud_dat[:,0]
