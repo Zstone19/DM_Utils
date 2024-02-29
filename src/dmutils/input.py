@@ -45,7 +45,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 def make_input_file(fnames, central_wl, times, z, output_fname, 
                     tol_fnames=None,
                     time_bounds=None, wl_bounds=None, 
-                    nbin=None, tol=5e-2):
+                    nbin=None, bin_factor=None, tol=5e-2):
     
     #Wavelength is assumed to be in rest frame
     #Wavelength bins for each time are assumed not to be the same
@@ -150,6 +150,9 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     #Need to rebin to a common wavelength grid
     if nbin is None:
         nbin = np.max( list(map(len, wl_tot))  )
+        
+    if bin_factor is not None:
+        nbin /= bin_factor
     
     min_wl = np.min( list(map(np.min, wl_tot)) )
     max_wl = np.max( list(map(np.max, wl_tot)) )
