@@ -152,7 +152,7 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
         nbin = np.max( list(map(len, wl_tot))  )
         
     if bin_factor is not None:
-        nbin /= bin_factor
+        nbin = int(nbin/bin_factor)
     
     min_wl = np.min( list(map(np.min, wl_tot)) )
     max_wl = np.max( list(map(np.max, wl_tot)) )
