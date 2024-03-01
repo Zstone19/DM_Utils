@@ -465,12 +465,12 @@ class Result:
         
         
         ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
-                    marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm')
+                    marker='o', ec='k', linewidths=.1, alpha=.9, cmap='coolwarm')
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
         ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
-                        marker='o', ec='k', linewidths=.5, alpha=.9, cmap='coolwarm_r')
+                        marker='o', ec='k', linewidths=.1, alpha=.9, cmap='coolwarm_r')
         
 
         if plot_rblr:
