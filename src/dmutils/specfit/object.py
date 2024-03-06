@@ -9,7 +9,7 @@ from dmutils import input
 
 class Object:
 
-    def __init__(self, rmid, main_dir='/data3/stone28/2drm/sdssrm/', processed=False, calibrate=False):
+    def __init__(self, rmid, main_dir='/data3/stone28/2drm/sdssrm/', processed=False, calibrate=None):
 
         self.rmid = int(rmid)
         self.main_dir = main_dir + 'rm{:03d}/'.format(rmid)
@@ -115,7 +115,7 @@ class Object:
         #Correct using OIII
         self.o3_corr = None
         self.calibrate = calibrate
-        if self.calibrate:
+        if self.calibrate is not None:
             self.use_oiii_corrections()
 
 
@@ -163,24 +163,34 @@ class Object:
 
 
     def use_oiii_corrections(self):
-        if not os.path.exists(self.main_dir + 'calibrate/fit_prof/o3_corr.csv'):
-            return
+        
+        if self.calibrate == 'PyQSOFit':
+            if not os.path.exists(self.main_dir + 'calibrate/fit_prof/o3_corr.csv'):
+                return
 
-        self.o3_corr = Table.read(self.main_dir + 'calibrate/fit_prof/o3_corr.csv', format='ascii')
-        self.o3_corr.sort('MJD')
+            self.o3_corr = Table.read(self.main_dir + 'calibrate/fit_prof/o3_corr.csv', format='ascii')
+            self.o3_corr.sort('MJD')
+        
+            fluxcorr = self.o3_corr['FluxCorr']
+            centercorr = self.o3_corr['CenterCorr']
+            
+        elif self.calibrate == 'PrepSpec':
+            fluxcorr = self.p0
+            centercorr = np.ones_like(self.p0)
+
 
         if self.processed:
             for line in self.table_arr.keys():
                 for i in range(len(self.table_arr[line])):
-                    self.table_arr[line][i]['Wave[vaccum]']  *= self.o3_corr['CenterCorr'][i]
-                    self.table_arr[line][i]['corrected_flux'] *= self.o3_corr['FluxCorr'][i]
-                    self.table_arr[line][i]['corrected_err'] *= self.o3_corr['FluxCorr'][i]
+                    self.table_arr[line][i]['Wave[vaccum]']  *= centercorr[i]
+                    self.table_arr[line][i]['corrected_flux'] *= fluxcorr[i]
+                    self.table_arr[line][i]['corrected_err'] *= fluxcorr[i]
 
         else:
             for i in range(len(self.table_arr)):
-                self.table_arr[i]['Wave[vaccum]']  *= self.o3_corr['CenterCorr'][i]
-                self.table_arr[i]['corrected_flux'] *= self.o3_corr['FluxCorr'][i]
-                self.table_arr[i]['corrected_err'] *= self.o3_corr['FluxCorr'][i]
+                self.table_arr[i]['Wave[vaccum]']  *= centercorr[i]
+                self.table_arr[i]['corrected_flux'] *= fluxcorr[i]
+                self.table_arr[i]['corrected_err'] *= fluxcorr[i]
 
         return
 
