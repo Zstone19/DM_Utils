@@ -13,7 +13,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2,
     if ffactor is None:
         ffactor = np.ones(len(fnames))
 
-    if cfactor is None
+    if cfactor is None:
         cfactor = np.ones(len(fnames))        
 
 
