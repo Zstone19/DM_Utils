@@ -163,10 +163,10 @@ class Object:
 
 
     def use_oiii_corrections(self):
-        if not os.path.exists(self.main_dir + 'calibrate/o3_corr.csv'):
+        if not os.path.exists(self.main_dir + 'calibrate/fit_prof/o3_corr.csv'):
             return
 
-        self.o3_corr = Table.read(self.main_dir + 'calibrate/o3_corr.csv', format='ascii')
+        self.o3_corr = Table.read(self.main_dir + 'calibrate/fit_prof/o3_corr.csv', format='ascii')
         self.o3_corr.sort('MJD')
 
         if self.processed:
