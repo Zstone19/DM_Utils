@@ -266,10 +266,22 @@ class Object:
 
 
         mask = (self.mjd >= xmin) & (self.mjd <= xmax)
+        
+        if self.calibrate is None:
+            ffactor = None
+            cfactor = None
+        elif self.calibrate == 'PyQSOFit':
+            ffactor = self.o3_corr['FluxCorr'][mask].data
+            cfactor = self.o3_corr['CenterCorr'][mask].data
+        elif self.calibrate == 'PrepSpec':
+            ffactor = self.p0[mask]
+            cfactor = None
+        
 
         input.make_input_file(fnames[mask], 
                              central_wl, self.mjd[mask], self.z, output_fname,
-                             tol_fnames[mask], nbin=nbin, bin_factor=bin_factor, tol=tol)
+                             tol_fnames=tol_fnames[mask], tol_ffactor=ffactor, tol_cfactor=cfactor,
+                             nbin=nbin, bin_factor=bin_factor, tol=tol)
         self.line2d_filename = output_fname
 
         return

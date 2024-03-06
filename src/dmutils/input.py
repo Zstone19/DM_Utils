@@ -6,15 +6,24 @@ from scipy.interpolate import splev, splrep
 #Get input for BRAINS
 
 #Get the bounds of the emission line profile given the (unbinned) spectra
-def get_prof_bounds(fnames, central_wl, tol=5e-2):
+def get_prof_bounds(fnames, central_wl, tol=5e-2,
+                    ffactor=None, cfactor=None):
+
+
+    if ffactor is None:
+        ffactor = np.ones(len(fnames))
+
+    if cfactor is None
+        cfactor = np.ones(len(fnames))        
+
 
     left_bound = []
     right_bound = []
     
     for i in range(len(fnames)):
         ex_dat = Table.read(fnames[i])
-        wl = ex_dat['wavelength'].tolist()
-        prof = ex_dat['profile'].tolist()
+        wl = ex_dat['wavelength'].tolist() * cfactor[i]
+        prof = ex_dat['profile'].tolist() * ffactor[i]
 
 
         #Get boundaries    
@@ -43,7 +52,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2):
 
 
 def make_input_file(fnames, central_wl, times, z, output_fname, 
-                    tol_fnames=None,
+                    tol_fnames=None, tol_ffactor=None, tol_cfactor=None,
                     time_bounds=None, wl_bounds=None, 
                     nbin=None, bin_factor=None, tol=5e-2):
     
@@ -81,6 +90,18 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     output_fname : string
         Filename for the output file
         
+    tol_fnames: list of string, optional
+        List of files containing profiles to use to determine the bounds of the profile.
+        
+    tol_ffactor: list of float, optional
+        Flux calibration factors for the tolerance-related profiles
+        
+    tol_cfactor: list of float, optional
+        Wavelength calibration factors for the tolerance-related profiles
+        
+    tol : float, optional
+        Tolerance for determining the bounds of the line profile. If the profile dips below this value, it is considered to be outside the line profile.
+        
     time_bounds: list of floats, optional
         List of the bounds of the time bins. If not specified, will use the first and last times in the list of times
         
@@ -90,9 +111,6 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     nbin : int, optional
         Number of wavelength bins to use. If not specified, will use the number of bins in the longest (i.e., most resolved) spectrum
     
-    tol : float, optional
-        Tolerance for determining the bounds of the line profile. If the profile dips below this value, it is considered to be outside the line profile.
-
 
     Returns
     -------
@@ -107,8 +125,8 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     if wl_bounds is not None:
         bounds = wl_bounds
     else:
-        bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol)
-    
+        bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol, 
+                                 ffactor=tol_ffactor, cfactor=tol_cfactor)
 
     if time_bounds is not None:
         time_mask = (times > time_bounds[0]) & (times < time_bounds[1])
