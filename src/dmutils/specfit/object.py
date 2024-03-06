@@ -202,7 +202,7 @@ class Object:
         epochs = np.array([ int(d[-4:-1]) for d in epoch_dirs ])
 
         if self.processed:
-            assert len(epoch_dirs) == len(self.table_arr[line]) == self.nepoch
+            assert len(epoch_dirs) == len(self.table_arr[line_name]) == self.nepoch
         else:
             assert len(epoch_dirs) == len(self.table_arr) == self.nepoch
 
