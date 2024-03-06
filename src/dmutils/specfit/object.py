@@ -9,7 +9,7 @@ from dmutils import input
 
 class Object:
 
-    def __init__(self, rmid, main_dir='/data3/stone28/2drm/sdssrm/', processed=False):
+    def __init__(self, rmid, main_dir='/data3/stone28/2drm/sdssrm/', processed=False, calibrate=False):
 
         self.rmid = int(rmid)
         self.main_dir = main_dir + 'rm{:03d}/'.format(rmid)
@@ -114,7 +114,9 @@ class Object:
 
         #Correct using OIII
         self.o3_corr = None
-        self.use_oiii_corrections()
+        self.calibrate = calibrate
+        if self.calibrate:
+            self.use_oiii_corrections()
 
 
 
