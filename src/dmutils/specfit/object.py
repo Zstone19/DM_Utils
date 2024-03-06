@@ -201,7 +201,10 @@ class Object:
         epoch_dirs = glob.glob(res_path + 'rm{:03d}/*/'.format(self.rmid) )
         epochs = np.array([ int(d[-4:-1]) for d in epoch_dirs ])
 
-        assert len(epoch_dirs) == len(self.table_arr) == self.nepoch
+        if self.processed:
+            assert len(epoch_dirs) == len(self.table_arr[line]) == self.nepoch
+        else:
+            assert len(epoch_dirs) == len(self.table_arr) == self.nepoch
 
 
         fit_files = []
