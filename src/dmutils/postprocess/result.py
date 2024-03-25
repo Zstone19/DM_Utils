@@ -281,7 +281,8 @@ class Result:
         
         #Get data
         idx, par = self.bp.find_max_prob()
-        bh_idx = self.bp.locate_bhmass()
+        # bh_idx = self.bp.locate_bhmass()
+        bh_idx = 8
 
         mbh = 10**( par[bh_idx]/np.log(10) + 6) * Msol
 
@@ -1109,7 +1110,8 @@ class Result:
         Msol = const.M_sun.cgs.value
         
         _, par = self.bp.find_max_prob()
-        bh_idx = self.bp.locate_bhmass()
+        # bh_idx = self.bp.locate_bhmass()
+        bh_idx = 8
         
         mbh = 10**( par[bh_idx]/np.log(10) + 6) * 1.99e33
         
