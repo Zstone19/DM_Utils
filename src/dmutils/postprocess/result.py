@@ -1063,7 +1063,7 @@ class Result:
         ax1 = fig.add_subplot(gs_br[:, 0])
         
             #MBH
-        mbh_samples = self.bp.results['sample'][:,self.bp.locate_bhmass()]/np.log(10) + 6        
+        mbh_samples = self.bp.results['sample'][:,8]/np.log(10) + 6        
         ax1.hist(mbh_samples, bins=25)
         ax1.axvline(np.median(mbh_samples), color='r', ls='--')
         
