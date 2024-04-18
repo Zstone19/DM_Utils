@@ -23,7 +23,7 @@ from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
 from pypetal.utils.petalio import err2str
 
-from .modelgen import generate_clouds, generate_tfunc, get_r_bounds
+from .modelgen import generate_clouds, generate_tfunc, get_rset_tset
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -90,7 +90,7 @@ class Result:
         xline = self.bp.data['line2d_data']['time']
         r_input = float(self.paramfile_inputs['rcloudmax'])
         t_input = float(self.paramfile_inputs['timeback'])
-        rmin, rmax = get_r_bounds(xline, xcon, r_input, t_input)
+        rmin, rmax, _ = get_rset_tset(xline, xcon, r_input, t_input)
 
         ntau = len(self.bp.results['tau_rec'][0])
         wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
