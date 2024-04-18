@@ -88,6 +88,9 @@ class Result:
 
         xcon, _, _ = self.bp.data['con_data'].T
         xline = self.bp.data['line2d_data']['time']
+        xcon /= (1+self.z)
+        xline /= (1+self.z)
+        
         r_input = float(self.paramfile_inputs['rcloudmax'])
         t_input = float(self.paramfile_inputs['timeback'])
         rmin, rmax, _ = get_rset_tset(xline, xcon, r_input, t_input)

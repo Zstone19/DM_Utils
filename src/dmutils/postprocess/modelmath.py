@@ -97,11 +97,12 @@ def get_Larr(xcon, nq):
     return Larr
 
 
-def get_covar_Umat(sigma, tau, alpha, nrecon_cont, xcont):
+def get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont):
+    nrecon_cont = len(xcont_recon)
     Umat = np.zeros((nrecon_cont, nrecon_cont))
     
     for i in range(nrecon_cont):
-        t1 = xcont[i]
+        t1 = xcont_recon[i]
         
         for j in range(len(xcont)):
             t2 = xcont[j]
@@ -166,7 +167,7 @@ def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_con
     alpha = 1.
     
     
-    USmat = get_covar_Umat(sigma, tau, alpha, nrecon_cont, xcont)
+    USmat = get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont)
     W, D, phi = compute_semiseparable_drw(xcont, sigma2, 1./tau, yerr_cont, sys_err)
     
     Larr = get_Larr(xcont, nq)
