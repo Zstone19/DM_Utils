@@ -2,6 +2,45 @@ import numpy as np
 from numba import njit, prange
 
 
+
+
+def get_r_bounds(xline, xcon, r_input, t_input):
+    rmin_set = 0
+    
+    
+    tspan_data = xline.max() - xline.min()
+    tspan_con = xcon.max() - xcon.min()
+    tcad_data = max( np.diff(xline).max(), np.diff(xcon).max() )
+    
+    tset = tspan_con + (xcon[0] - xline[0])
+    tset = max( 2*tcad_data, tset )
+    
+    
+    
+    dt = xcon[0] - tset
+    if (r_input > 0):
+        dt = max( dt , xline[0] - r_input*2 )
+    elif (tset > 0):
+        dt = max( dt, xcon[0] - t_input )
+    
+
+
+    rmax_set = tspan_data/2
+    
+    rmax_set = min( rmax_set, (xline[0] - xcon[0] + tset)/2  )
+    if r_input > 0:
+        rmax_set = min( rmax_set, r_input )
+        
+    return rmin_set, rmax_set
+
+
+
+
+
+############################################################################################################
+################################################# CLOUDS ###################################################
+############################################################################################################
+
 @njit(fastmath=True)
 def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2):
     return np.arccos( theta_opn_cos1 + (theta_opn_cos2 - theta_opn_cos1) * np.random.random_sample()**(1./gamma) )
@@ -197,11 +236,9 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
     return cloud_weights, cloud_taus, cloud_coords, cloud_pcoords, cloud_vels, cloud_vels_los
 
 
-
-
-
-
-
+############################################################################################################
+############################################# TRANSFER FUNCTION ############################################
+############################################################################################################
 
 def gkern(l=5, sig=1.):
     """
@@ -261,5 +298,27 @@ def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
 
 
 
+############################################################################################################
+############################################## LIGHT CURVES ################################################
+############################################################################################################
 
 
+# def reconstruct_line2d(model_params, vel_line, nt, line_center):
+#     GRAVITY = 6.672e-8
+#     SOLAR_MASS = 1.989e33
+#     CVAL = 2.9979e10
+#     CM_PER_LD = CVAL*8.64e4
+#     VEL_UNIT = np.sqrt( GRAVITY * 1.0e6 * SOLAR_MASS / CM_PER_LD ) / 1.0e5
+#     C_UNIT = CVAL/1.0e5/VEL_UNIT
+    
+
+    
+#     nv = len(vel_line)
+#     dv = (vel_line[-1] - vel_line[0])/(nv-1) * line_center/C_UNIT
+#     ylc_recon = np.zeros(nt)
+    
+    
+    
+    
+    
+#     return t_recon, wl_recon, spec_recon

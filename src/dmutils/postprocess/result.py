@@ -23,6 +23,7 @@ from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
 from pypetal.utils.petalio import err2str
 
+from .modelgen import generate_clouds, generate_tfunc, get_r_bounds
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -32,12 +33,13 @@ class Result:
     
     def __init__(self, fname, line_name=None, latex_dir=None):
         self.bp = bplotlib(fname)
+        self.paramfile_inputs = self.bp.param._parser._sections['dump']
         
         #Load parameters
-        self.z = float(self.bp.param._parser._sections['dump']['redshift'])
-        self.central_wl = float(self.bp.param._parser._sections['dump']['linecenter'])
-        self.ncloud = int(self.bp.param._parser._sections['dump']['ncloudpercore'])
-        self.vel_per_cloud = int(self.bp.param._parser._sections['dump']['nvpercloud'])
+        self.z = float(self.paramfile_inputs['redshift'])
+        self.central_wl = float(self.paramfile_inputs['linecenter'])
+        self.ncloud = int(self.paramfile_inputs['ncloudpercore'])
+        self.vel_per_cloud = int(self.paramfile_inputs['nvpercloud'])
         
         #Load filenames
         self.param_fname = fname
@@ -54,9 +56,8 @@ class Result:
             
         #Latex directory
         self.latex_dir = latex_dir
-            
-            
-
+    
+    
         #Plotting settings
         mpl.rcParams['xtick.minor.visible'] = True
         mpl.rcParams['xtick.top'] = True
@@ -70,6 +71,60 @@ class Result:
 
         mpl.rcParams['savefig.dpi'] = 300
         mpl.rcParams['savefig.format'] = 'pdf'
+        
+        
+        
+###############################################################################
+################################ SAMPLE MODEL #################################
+###############################################################################
+
+    def sample_model(self, best_type='med'):
+        GRAVITY = 6.672e-8
+        SOLAR_MASS = 1.989e33
+        CVAL = 2.9979e10
+        CM_PER_LD = CVAL*8.64e4
+        VEL_UNIT = np.sqrt( GRAVITY * 1.0e6 * SOLAR_MASS / CM_PER_LD ) / 1.0e5
+        C_UNIT = CVAL/1.0e5/VEL_UNIT
+
+        xcon, _, _ = self.bp.data['con_data'].T
+        xline = self.bp.data['line2d_data']['time']
+        r_input = self.paramfile_inputs['rcloudmax']
+        t_input = self.paramfile_inputs['timeback']
+        rmin, rmax = get_r_bounds(xline, xcon, r_input, t_input)
+
+        ntau = len(self.bp.results['tau_rec'][0])
+        wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
+        self.psi_v = (CVAL/1e5)*( wl_vals - self.central_wl )/self.central_wl
+
+        if best_type == 'maxll':
+            idx, _ = self.bp.find_max_prob()
+            self.model_params = self.bp.results['sample'][idx,:]
+        elif best_type == 'map':
+            idx = np.argmax(self.bp.results['sample_info'])
+            self.model_params = self.bp.results['sample'][idx,:]
+        elif best_type == 'med':
+            self.model_params = np.median(self.bp.results['sample'], axis=0)
+        else:
+            raise ValueError('Invalid best_type')
+
+
+        self.cloud_weights, self.cloud_taus, \
+        self.cloud_coords, self.cloud_pcoords, \
+        self.cloud_vels, self.cloud_vels_los = generate_clouds(self.model_params, self.ncloud, 
+                                                               rmax, rmin, 
+                                                               self.vel_per_cloud)
+        
+
+        self.psi_tau, _, self.psi_2d = generate_tfunc(self.cloud_taus, self.cloud_vels_los, self.cloud_weights, ntau, self.psi_v/VEL_UNIT, sys.float_info.epsilon)
+
+
+        self.vels *= VEL_UNIT
+        self.vels_los *= VEL_UNIT
+
+        return
+
+
+
 
 ###############################################################################
 ################################ INDIVIDUAL PLOTS #############################
@@ -280,17 +335,17 @@ class Result:
         Msol = const.M_sun.cgs.value
         
         #Get data
-        idx, par = self.bp.find_max_prob()
+        idx, _ = self.bp.find_max_prob()
         # bh_idx = self.bp.locate_bhmass()
         bh_idx = 8
 
-        mbh = 10**( par[bh_idx]/np.log(10) + 6) * Msol
+        mbh = 10**( self.model_params[bh_idx]/np.log(10) + 6) * Msol
 
-        wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
-        t_vals = self.bp.results['tau_rec'][idx]
-        vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl
+        # wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
+        # t_vals = self.bp.results['tau_rec'][idx]
+        # vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl
         
-        env_vals = mbh * G/c/(vel_vals*1e5)**2
+        env_vals = mbh * G/c/(self.psi_v*1e5)**2
         env_vals /= 60*60*24 # convert to days
         
         
@@ -305,11 +360,11 @@ class Result:
 
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
-                    extent=[vel_vals[0]/1000, vel_vals[-1]/1000, t_vals[0], t_vals[-1]],
+                    extent=[self.psi_v[0]/1000, self.psi_v[-1]/1000, self.psi_tau[0], self.psi_tau[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
                     vmin=vmin, vmax=vmax)
 
-        ax.plot(vel_vals/1000, env_vals, color='c', ls='--', lw=2)
+        ax.plot(self.psi_v/1000, env_vals, color='c', ls='--', lw=2)
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -393,19 +448,9 @@ class Result:
             ax_in = True
 
 
-        inc = np.median(self.bp.results['sample'][:,3])
-        rblr = 10**np.median(self.bp.results['sample'][:,0]/np.log(10))
-        
-        cloud_dat = np.loadtxt(self.cloud_fname)
-        x_vals = cloud_dat[:,0]
-        y_vals = cloud_dat[:,1]
-        z_vals = cloud_dat[:,2]
-        weights = cloud_dat[:,-1]
-
-        vx_vals = cloud_dat[:,3]
-        vy_vals = cloud_dat[:,4]
-        vz_vals = cloud_dat[:,5]
-        
+        inc = np.median(self.model_params[3])
+        rblr = 10**np.median(self.model_params[0]/np.log(10))
+                
         x_rblr = np.linspace(bounds[0], bounds[1], 5000)
         y_rblr1 = np.sqrt(rblr**2 - x_rblr**2)
         y_rblr2 = -y_rblr1.copy()
@@ -418,6 +463,14 @@ class Result:
         zline1 = np.linspace(zmin, zmax, 1000)
         xline2 = np.full( 1000, rblr )
         zline2 = zline1.copy()
+        
+        
+        x_vals, y_vals, z_vals = self.cloud_coords.T
+        vx_vals = self.cloud_vels[:,:,0]
+        vy_vals = self.cloud_vels[:,:,1]
+        vz_vals = self.cloud_vels[:,:,2]
+        weights = self.cloud_weights
+
         
         
         if rotate:
@@ -459,18 +512,17 @@ class Result:
         
         
         sizes = 40*weights
-
         
         if ax is None:
             fig, ax = plt.subplots(1, 2, figsize=(11,5), sharey=True)    
         
         
-        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
+        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=np.hstack(vy_vals[::skip])/1000, 
                     marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm')
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
-        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
+        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=np.hstack(vx_vals[::skip])/1000, 
                         marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm_r')
         
 
@@ -563,23 +615,19 @@ class Result:
         
         """
         
-        cloud_dat = np.loadtxt(self.cloud_fname)
-        x_vals = cloud_dat[:,0]
-        y_vals = cloud_dat[:,1]
-        z_vals = cloud_dat[:,2]
-        weights = cloud_dat[:,-1]
 
-        vx_vals = cloud_dat[:,3]
-        vy_vals = cloud_dat[:,4]
-        vz_vals = cloud_dat[:,5]
+        x_vals, y_vals, z_vals = self.cloud_coords.T
+        vx_vals = self.cloud_vels[:,:,0]
+        vy_vals = self.cloud_vels[:,:,1]
+        vz_vals = self.cloud_vels[:,:,2]
+        weights = self.cloud_weights
         
         
         
-        
-        
-        x_sum = x_vals[::self.vel_per_cloud].copy()
-        y_sum = y_vals[::self.vel_per_cloud].copy()
-        z_sum = z_vals[::self.vel_per_cloud].copy()
+        #Individual clouds
+        x_sum = x_vals.copy()
+        y_sum = y_vals.copy()
+        z_sum = z_vals.copy()
 
         xtot = x_sum[::skip].copy()
         ytot = y_sum[::skip].copy()
@@ -589,17 +637,11 @@ class Result:
         
         
         
-        vx_sum = np.zeros(len(x_vals)//self.vel_per_cloud)
-        vy_sum = np.zeros(len(x_vals)//self.vel_per_cloud)
-        vz_sum = np.zeros(len(x_vals)//self.vel_per_cloud)
-        weights_sum = np.zeros(len(x_vals)//self.vel_per_cloud)
-        
-        for i in range(len(vx_vals)//self.vel_per_cloud):
-            vx_sum[i] = np.sum(vx_vals[self.vel_per_cloud*i:self.vel_per_cloud*(i+1)])
-            vy_sum[i] = np.sum(vy_vals[self.vel_per_cloud*i:self.vel_per_cloud*(i+1)])
-            vz_sum[i] = np.sum(vz_vals[self.vel_per_cloud*i:self.vel_per_cloud*(i+1)])
-            weights_sum[i] = np.sum(weights[self.vel_per_cloud*i:self.vel_per_cloud*(i+1)])
-        
+        vx_sum = np.sum(vx_vals, axis=1)
+        vy_sum = np.sum(vy_vals, axis=1)
+        vz_sum = np.sum(vz_vals, axis=1)
+        weights_sum = weights.copy()        
+
 
         weights_sum /= self.vel_per_cloud
         vxtot = vx_sum[::skip].copy()
@@ -861,8 +903,8 @@ class Result:
                 fig, ax = plt.subplots(1, 1, figsize=(5,5), sharey=True)
             
             
-        psi2d = self.bp.results['tran2d_rec']
-        tau_vals = self.bp.results['tau_rec']
+        psi2d = self.psi_2d
+        tau_vals = self.psi_tau
         sum2_arr = psi2d.sum(axis=2).sum(axis=1)
         sum1_arr = np.sum( psi2d.sum(axis=2)*tau_vals, axis=1)
         lag_posterior = sum1_arr / sum2_arr
