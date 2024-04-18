@@ -79,15 +79,15 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
     cloud_vels_los = np.zeros((n_cloud_per_core, n_v_per_cloud))
     
     
-    mbh = np.exp(model_params[0])                               #MBH [1e6 solar masses]
-    mu = np.exp(model_params[1])                                
-    beta = model_params[2]
-    F = model_params[3]
-    inc = np.arccos(model_params[4])                            #Inc [rad]
-    cos_theta_opn = np.cos(model_params[5] * np.pi/180)         #Cos(theta_opn)
-    kappa = model_params[6]                                     
-    gamma = model_params[7]
-    xi = model_params[8]
+    mu = np.exp(model_params[0])                                
+    beta = model_params[1]
+    F = model_params[2]
+    inc = np.arccos(model_params[3])                            #Inc [rad]
+    cos_theta_opn = np.cos(model_params[4] * np.pi/180)         #Cos(theta_opn)
+    kappa = model_params[5]                                     
+    gamma = model_params[6]
+    xi = model_params[7]
+    mbh = np.exp(model_params[8])                               #MBH [1e6 solar masses]
     
     f_ellip = model_params[9]
     f_flow = model_params[10]
