@@ -1,7 +1,8 @@
 import numpy as np
 from numba import njit, prange
 
-from modelmath import calculate_cont_from_model_semiseparable, calculate_cont_rm, calculate_line2d_from_model
+from .modelmath import (calculate_cont_from_model_semiseparable, 
+                        calculate_cont_rm, calculate_line2d_from_model)
 
 
 
