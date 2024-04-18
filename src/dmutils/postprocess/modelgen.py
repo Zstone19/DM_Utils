@@ -394,7 +394,7 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     ################################
     #Get xline_recon
     xline_recon_min = xline.min() - min( .1*(xline.max() - xline.min()), 10. )
-    if t_input <= 0.
+    if t_input <= 0.:
         xline_recon_min = max( xline_recon.min, xcont_recon_min + timeback )
 
     xline_recon_max = xline.max() + min( .1*(xline.max() - xline.min()), 10. )
