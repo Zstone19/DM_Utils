@@ -38,16 +38,16 @@ def multiply_matvec_MN_transposeA(A, x):
     return np.dot(A.T, x)
 
 def inverse_pomat(A):
-    A1 = sla.lapack.dpotrf(A, lower=0)
-    A2 = sla.lapack.dpotri(A1, lower=0)
+    # A1 = sla.lapack.dpotrf(A, lower=0)
+    # A2 = sla.lapack.dpotri(A1, lower=0)
     
-    Aout = A2.copy()
+    # Aout = A2.copy()
     
-    for i in range(A.shape[0]):
-        for j in range(i):
-            Aout[i,j] = A2[j,i]
+    # for i in range(A.shape[0]):
+    #     for j in range(i):
+    #         Aout[i,j] = A2[j,i]
             
-    return Aout
+    return np.linalg.inv(A)
 
 def multiply_mat_MN(A, B):
     return np.dot(A, B)
