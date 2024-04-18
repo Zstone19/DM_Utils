@@ -118,8 +118,8 @@ class Result:
         self.psi_tau, _, self.psi_2d = generate_tfunc(self.cloud_taus, self.cloud_vels_los, self.cloud_weights, ntau, self.psi_v/VEL_UNIT, sys.float_info.epsilon)
 
 
-        self.vels *= VEL_UNIT
-        self.vels_los *= VEL_UNIT
+        self.cloud_vels *= VEL_UNIT
+        self.cloud_vels_los *= VEL_UNIT
 
         return
 
