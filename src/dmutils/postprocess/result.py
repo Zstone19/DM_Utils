@@ -527,7 +527,7 @@ class Result:
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
-        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip])/1000, 
+        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
                         marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm_r')
         
 
