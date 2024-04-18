@@ -335,7 +335,7 @@ class Result:
         Msol = const.M_sun.cgs.value
         
         #Get data
-        idx, _ = self.bp.find_max_prob()
+        bh_idx, _ = self.bp.find_max_prob()
         # bh_idx = self.bp.locate_bhmass()
         bh_idx = 8
 
@@ -908,8 +908,8 @@ class Result:
                 fig, ax = plt.subplots(1, 1, figsize=(5,5), sharey=True)
             
             
-        psi2d = self.psi_2d
-        tau_vals = self.psi_tau
+        psi2d = self.bp.results['tran2d_rec'] #Use psi2D for all samples
+        tau_vals = self.bp.results['tau_rec']
         sum2_arr = psi2d.sum(axis=2).sum(axis=1)
         sum1_arr = np.sum( psi2d.sum(axis=2)*tau_vals, axis=1)
         lag_posterior = sum1_arr / sum2_arr
