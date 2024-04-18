@@ -351,7 +351,7 @@ class Result:
         
         
         
-        plot_arr = self.bp.results['tran2d_rec'][idx].copy()
+        plot_arr = self.psi_2d.copy()
         plot_arr[ plot_arr > 1 ] = 0.
 
 
@@ -448,7 +448,7 @@ class Result:
             ax_in = True
 
 
-        inc = np.median(self.model_params[3])
+        inc = self.model_params[3]
         rblr = 10**np.median(self.model_params[0]/np.log(10))
                 
         x_rblr = np.linspace(bounds[0], bounds[1], 5000)
@@ -509,6 +509,11 @@ class Result:
             zline2 = -xline20*np.sin(inc) + zline20*np.cos(inc)
         
         
+        #Use the mean velocity
+        vx_vals = np.mean(vx_vals, axis=1)
+        vy_vals = np.mean(vy_vals, axis=1)
+        vz_vals = np.mean(vz_vals, axis=1)
+        
         
         
         sizes = 40*weights
@@ -517,12 +522,12 @@ class Result:
             fig, ax = plt.subplots(1, 2, figsize=(11,5), sharey=True)    
         
         
-        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=np.hstack(vy_vals[::skip])/1000, 
+        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
                     marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm')
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
-        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=np.hstack(vx_vals[::skip])/1000, 
+        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip])/1000, 
                         marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm_r')
         
 
