@@ -88,8 +88,8 @@ class Result:
 
         xcon, _, _ = self.bp.data['con_data'].T
         xline = self.bp.data['line2d_data']['time']
-        r_input = self.paramfile_inputs['rcloudmax']
-        t_input = self.paramfile_inputs['timeback']
+        r_input = float(self.paramfile_inputs['rcloudmax'])
+        t_input = float(self.paramfile_inputs['timeback'])
         rmin, rmax = get_r_bounds(xline, xcon, r_input, t_input)
 
         ntau = len(self.bp.results['tau_rec'][0])
