@@ -206,6 +206,9 @@ class DM_Data:
             self.yline[i] *= dv
             self.yerr_line[i] = np.sqrt(self.yerr_line[i])*dv
             
+        self.yline_out = self.yline.copy()
+        self.yerr_line_out = self.yerr_line.copy()
+            
             
         ################################
         # Rescale light curves
