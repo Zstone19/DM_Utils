@@ -153,7 +153,7 @@ class Result:
             
         self.xcont_recon_out, self.ycont_recon_out, self.yerr_cont_recon_out, \
         self.ycont_rm_out, self.xline_recon_out, self.yline_recon_out, \
-        self.vel_line_ext_out, self.line2D_recon = get_cont_line2d_recon(model_params, self.data, self.ycont_recon, self.yerr_cont_recon)
+        self.vel_line_ext_out, self.line2D_recon = get_cont_line2d_recon(self.model_params, self.data, self.ycont_recon, self.yerr_cont_recon)
             
         
         return
