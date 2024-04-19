@@ -547,7 +547,7 @@ def reconstruct_line2d(model_params, data, ycont_recon):
     #Reconstruct continuum
     ycont_rm = calculate_cont_rm(model_params, data.xcont_recon, ycont_recon, 
                                  data.pow_xcont, data.xcont_med, 
-                                 data.idx_resp, data.flag_trend_diff, data.nparams_difftrend)
+                                 data.idx_resp, data.flag_trend_diff, data.ndifftrend)
     
     
     #Get transfer function (at data pts)
