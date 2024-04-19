@@ -457,7 +457,7 @@ def gkern(l=5, sig=1.):
     kernel = np.exp(-0.5 * np.square(ax) / np.square(sig))
     return kernel / np.sum(kernel)
 
-@njit(fastmath=True)
+
 def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     
     bin_offset = .5
