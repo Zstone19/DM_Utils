@@ -551,7 +551,7 @@ def reconstruct_line2d(model_params, data, ycont_recon):
     
     
     #Get transfer function (at data pts)
-    cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, data.ncloud, data.rmax, data.rmin, data.nvel_per_cloud)
+    cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, data.ncloud, data.rmax, data.rmin, data.vel_per_cloud)
     psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, data.ntau, data.vel_line_ext, data.EPS)
 
     #Get line2D
