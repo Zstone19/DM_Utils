@@ -447,6 +447,7 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
 ############################################# TRANSFER FUNCTION ############################################
 ############################################################################################################
 
+@njit(fastmath=True)
 def gkern(l=5, sig=1.):
     """
     
