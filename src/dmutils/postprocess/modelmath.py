@@ -82,7 +82,7 @@ def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
     m = Y.shape[0]
     n = Y.shape[1]
     
-    Y_flat = np.hstack(Y)
+    Y_flat = Y.flatten()
     Z_flat = np.zeros_like(Y_flat)
     
     for j in range(m):
