@@ -86,7 +86,7 @@ class DM_Data:
         self.rmin, self.rmax, self.timeback = get_rset_tset(self.xline, self.xcont, self.r_input, self.t_input)
 
         self.ntau = len(bp.results['tau_rec'][0])
-        self.wl_vals = bp.data['line2d_data']['profile'][0,:,0]/(1+z)
+        self.wl_vals = bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
         self.vel_line = self.C_UNIT*( self.wl_vals - self.central_wl )/self.central_wl
         self.line2d = bp.data['line2d_data']['profile'][:,:,1]
         self.line2d_err = bp.data['line2d_data']['profile'][:,:,2] 
@@ -198,7 +198,7 @@ class DM_Data:
         ################################
         # Rescale light curves
         
-        cont_err_mean = np.mean(self.yerr_cont)
+        self.cont_err_mean = np.mean(self.yerr_cont)
         
         cont_avg = np.mean(self.ycont)
         self.cont_scale = 1/cont_avg
