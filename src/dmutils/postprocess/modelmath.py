@@ -295,9 +295,11 @@ def calculate_line2d_from_model(model_params, psi_v, psi_tau, psi2D,
     
     
     #Smooth line profile
-    line2D_recon_smooth = line_gaussian_smooth_2d(psi_v, xline_recon, line2D_recon, 
-                                                  model_params,
-                                                  flag_inst_res, inst_res, inst_res_err,
-                                                  nblrmodel, nnlr)
+    # line2D_recon_smooth = line_gaussian_smooth_2d(psi_v, xline_recon, line2D_recon, 
+    #                                               model_params,
+    #                                               flag_inst_res, inst_res, inst_res_err,
+    #                                               nblrmodel, nnlr)
+    
+    line2D_recon_smooth = line2D_recon.copy()
     
     return line2D_recon_smooth
