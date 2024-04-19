@@ -1,10 +1,9 @@
 import numpy as np
+import sys
 from numba import njit, prange
 
 from .modelmath import (calculate_cont_from_model, 
                         calculate_cont_rm, calculate_line2d_from_model)
-
-
 
 
 def get_rset_tset(xline, xcon, r_input, t_input):
@@ -39,7 +38,198 @@ def get_rset_tset(xline, xcon, r_input, t_input):
     return rmin_set, rmax_set, tset
 
 
+class DM_Data:
+    
+    def __init__(self, bp, paramfile_inputs):
+        
+        #All fluxes and velocities will be scaled
+        #Use VEL_UNIT to convert to km/s
+        #Use cont_scale and line_scale to convert to input flux units
+        
+        ################################
+        #Constants
+        self.GRAVITY = 6.672e-8
+        self.SOLAR_MASS = 1.989e33
+        self.CVAL = 2.9979e10
+        self.CM_PER_LD = self.CVAL*8.64e4
+        self.VEL_UNIT = np.sqrt( self.GRAVITY * 1.0e6 * self.SOLAR_MASS / self.CM_PER_LD ) / 1.0e5
+        self.C_UNIT = self.CVAL/1.0e5/self.VEL_UNIT
+        
+        self.EPS = sys.float_info.epsilon
+        
+        
+        self.z = float(paramfile_inputs['redshift'])
+        self.central_wl = float(paramfile_inputs['linecenter'])
+        self.ncloud = int(paramfile_inputs['ncloudpercore'])
+        self.vel_per_cloud = int(paramfile_inputs['nvpercloud'])
+        self.nrecon_cont = int(paramfile_inputs['nconrecon'])
+        self.nrecon_line = int(paramfile_inputs['nlinerecon'])
+        self.nrecon_vel = int(paramfile_inputs['nvelrecon'])
+        
+        self.flag_linecenter = int(paramfile_inputs['flaglinecenter'])
+        self.flag_trend = int(paramfile_inputs['flagtrend'])
+        self.flag_trend_diff = int(paramfile_inputs['flagtrenddiff'])
+        self.flag_inst_res = int(paramfile_inputs['flaginstres'])
+        self.flag_nl = int(paramfile_inputs['flagnarrowline'])
+        
+        self.inst_res = float(paramfile_inputs['instres'])
+        self.inst_res_err = float(paramfile_inputs['instreserr'])
+        self.r_input = float(paramfile_inputs['rcloudmax'])
+        self.t_input = float(paramfile_inputs['timeback'])
+        
+            #Already in rest-frame
+        self.xcont, ycont, yerr_cont = bp.data['con_data'].T
+        self.xline = bp.data['line2d_data']['time']
+        
+        self.r_input = float(paramfile_inputs['rcloudmax'])
+        self.t_input = float(paramfile_inputs['timeback'])
+        self.rmin, self.rmax, self.timeback = get_rset_tset(self.xline, self.xcont, self.r_input, self.t_input)
 
+        self.ntau = len(bp.results['tau_rec'][0])
+        self.wl_vals = bp.data['line2d_data']['profile'][0,:,0]/(1+z)
+        self.vel_line = self.C_UNIT*( self.wl_vals - self.central_wl )/self.central_wl
+        self.line2d = bp.data['line2d_data']['profile'][:,:,1]
+        self.line2d_err = bp.data['line2d_data']['profile'][:,:,2] 
+        
+        ################################
+        # Get nparams
+        self.nq = 1 + self.flag_trend
+        self.ntrend = self.nq
+        self.ndrw = 3
+        self.nresp = 2
+        
+        if self.flag_trend_diff > 0:
+            self.ndifftrend = 1
+        else:
+            self.ndifftrend = 0
+            
+        self.nvar = self.ndrw + self.ntrend + self.nresp + self.ndifftrend
+        
+        self.nnlr = 0
+        if self.flag_nl >= 2:
+            self.nnlr = 3
+        
+        self.nres = 1
+        if self.flag_inst_res > 1:
+            self.nres = len(self.xline)
+            
+        self.nlinecenter = 0
+        if self.flag_linecenter > 0:
+            self.nlinecenter = 1
+        elif self.flag_linecenter < 0:
+            self.nlinecenter = len(self.xline)
+            
+            
+            
+        ################################
+        #Get xcont_recon
+        tspan = self.xcont.max() - self.xcont.min()
+        xcont_recon_min = self.xcont.min() - self.timeback - 10.
+        
+        xcont_recon_max = self.xcont.max() + max(.05*tspan, 20.)
+        xcont_recon_max = max( xcont_recon_max, self.xline.max() + 10. )
+
+        dt = (xcont_recon_max - xcont_recon_min)/(self.nrecon_cont-1)
+        self.xcont_recon = np.array([ xcont_recon_min + j*dt for j in range(self.nrecon_cont) ])
+
+        
+        ################################
+        #Get xline_recon
+        xline_recon_min = self.xline.min() - min( .1*(self.xline.max() - self.xline.min()), 10. )
+        if self.t_input <= 0.:
+            xline_recon_min = max( xline_recon_min, xcont_recon_min + self.timeback )
+
+        xline_recon_max = self.xline.max() + min( .1*(self.xline.max() - self.xline.min()), 10. )
+        xline_recon_max = min( xline_recon_max, xcont_recon_max - 1. )
+        
+        dt = (xline_recon_max - xline_recon_min)/(self.nrecon_line-1)
+        self.xline_recon = np.array([ xline_recon_min + j*dt for j in range(self.nrecon_line) ])
+        
+        
+        ################################
+        # Get pow_xcont, xcont_med
+        tspan_cont = self.xcont.max() - self.xcont.min()    
+        tspan = self.xline.max() - self.xcont.min()
+        xcont_med = .5*(self.xcont.max() + self.xcont.min())
+        
+        self.pow_xcont = np.zeros(self.ndifftrend)
+        for i in range(self.ndifftrend):
+            self.pow_xcont[i] = ( (self.xcont.max() - xcont_med)**(i+2) - (self.xcont.min() - xcont_med)**(i+2) )/(i+2)/tspan_cont
+
+        
+        ################################
+        # Get idx_resp
+        
+        #For P14 model
+        self.nblrmodel = 17
+        self.nblr = self.nblrmodel + self.nnlr + self.nres + self.nlinecenter + 1
+        
+        self.nparams = self.nrecon_cont + self.nblr + self.nvar
+        self.idx_resp = self.nblr + self.ndrw + self.ntrend
+        self.idx_difftrend = self.idx_resp + self.nresp
+        self.idx_linecenter = self.nblrmodel + self.nnlr + self.nres
+
+        
+        ################################
+        # Get line LC
+        
+        dv = np.diff(self.vel_line)[0]
+        
+        self.yline = np.zeros(len(self.xline))
+        self.yerr_line = np.zeros(len(self.xline))
+        
+        
+        self.line_err_mean = np.mean(self.line2d_err)
+        for i in range(len(self.xline)):
+            self.yline[i] = self.line2d[i,0]/2.
+            self.yerr_line[i] = self.line2d_err[i,0]*self.line2d_err[i,0]/2. 
+            
+            for j in range(1, len(self.vel_line)):
+                self.yline[i] += self.line2d[i,j]
+                self.yerr_line[i] += self.line2d_err[i,j]*self.line2d_err[i,j]   
+                
+            self.yline[i] += self.line2d[i,-1]/2.
+            self.yerr_line[i] += self.line2d_err[i,-1]*self.line2d_err[i,-1]/2.
+            
+            self.yline[i] *= dv
+            self.yerr_line[i] = np.sqrt(self.yerr_line[i])*dv
+            
+            
+        ################################
+        # Rescale light curves
+        
+        cont_err_mean = np.mean(self.yerr_cont)
+        
+        cont_avg = np.mean(self.ycont)
+        self.cont_scale = 1/cont_avg
+        
+        line_avg = np.mean(self.yline)
+        self.line_scale = 1/line_avg
+        
+        self.ycont *= self.cont_scale
+        self.yerr_cont *= self.cont_scale
+        self.cont_err_mean *= self.cont_scale
+        
+        self.yline *= self.line_scale
+        self.yerr_line *= self.line_scale
+        self.line2d *= self.line_scale
+        self.line2d_err *= self.line_scale
+        self.line_err_mean *= self.line_scale
+            
+        ################################
+        # Extend velocities
+        
+        self.nvel_data_incr = 5
+        self.nvel_data_ext = len(self.vel_line) + 2*self.nvel_data_incr
+
+        dv = np.diff(self.vel_line)[0]
+        self.vel_line_ext = np.zeros(self.nvel_data_ext)
+        for i in range(self.nvel_data_incr+1):
+            self.vel_line_ext[i] = self.vel_line[0] - (self.nvel_data_incr - i)*dv
+            self.vel_line_ext[-1-i] = self.vel_line[-1] + (self.nvel_data_incr - i)*dv
+
+        for i in range(len(self.vel_line)):
+            self.vel_line_ext[i+self.nvel_data_incr] = self.vel_line[i]
 
 
 ############################################################################################################
@@ -307,196 +497,22 @@ def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
 ############################################## LIGHT CURVES ################################################
 ############################################################################################################
 
+def get_cont_line2d_recon(model_params, data, ycont_recon, yerr_cont_recon):
 
-def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
-    GRAVITY = 6.672e-8
-    SOLAR_MASS = 1.989e33
-    CVAL = 2.9979e10
-    CM_PER_LD = CVAL*8.64e4
-    VEL_UNIT = np.sqrt( GRAVITY * 1.0e6 * SOLAR_MASS / CM_PER_LD ) / 1.0e5
-    C_UNIT = CVAL/1.0e5/VEL_UNIT
-
-    ################################
-    #Load info
-
-    z = float(paramfile_inputs['redshift'])
-    central_wl = float(paramfile_inputs['linecenter'])
-    ncloud = int(paramfile_inputs['ncloudpercore'])
-    vel_per_cloud = int(paramfile_inputs['nvpercloud'])
-    nrecon_cont = int(paramfile_inputs['nconrecon'])
-    nrecon_line = int(paramfile_inputs['nlinerecon'])
-    nrecon_vel = int(paramfile_inputs['nvelrecon'])
-    
-    flag_linecenter = int(paramfile_inputs['flaglinecenter'])
-    flag_trend = int(paramfile_inputs['flagtrend'])
-    flag_trend_diff = int(paramfile_inputs['flagtrenddiff'])
-    flag_inst_res = int(paramfile_inputs['flaginstres'])
-    flag_nl = int(paramfile_inputs['flagnarrowline'])
-    
-    inst_res = float(paramfile_inputs['instres'])
-    inst_res_err = float(paramfile_inputs['instreserr'])
-    r_input = float(paramfile_inputs['rcloudmax'])
-    t_input = float(paramfile_inputs['timeback'])
-    
-    #Already in rest-frame
-    xcont, ycont, yerr_cont = bp.data['con_data'].T
-    xline = bp.data['line2d_data']['time']
-    
-    r_input = float(paramfile_inputs['rcloudmax'])
-    t_input = float(paramfile_inputs['timeback'])
-    _, _, timeback = get_rset_tset(xline, xcont, r_input, t_input)
-
-    ntau = len(bp.results['tau_rec'][0])
-    wl_vals = bp.data['line2d_data']['profile'][0,:,0]/(1+z)
-    vel_line = C_UNIT*( wl_vals - central_wl )/central_wl
-    line2d = bp.data['line2d_data']['profile'][:,:,1]
-    line2d_err = bp.data['line2d_data']['profile'][:,:,2]
-    
-    ################################
-    # Get nparams
-    nq = 1 + flag_trend
-    ntrend = nq
-    ndrw = 3
-    nresp = 2
-    
-    if flag_trend_diff > 0:
-        ndifftrend = 1
-    else:
-        ndifftrend = 0
-        
-    nvar = ndrw + ntrend + nresp + ndifftrend
-    
-    nnlr = 0
-    if flag_nl >= 2:
-        nnlr = 3
-    
-    nres = 1
-    if flag_inst_res > 1:
-        nres = len(xline)
-        
-    nlinecenter = 0
-    if flag_linecenter > 0:
-        nlinecenter = 1
-    elif flag_linecenter < 0:
-        nlinecenter = len(xline)
-
-    ################################
-    #Get xcont_recon
-    tspan = xcont.max() - xcont.min()
-    xcont_recon_min = xcont.min() - timeback - 10.
-    
-    xcont_recon_max = xcont.max() + max(.05*tspan, 20.)
-    xcont_recon_max = max( xcont_recon_max, xline.max() + 10. )
-
-    dt = (xcont_recon_max - xcont_recon_min)/(nrecon_cont-1)
-    xcont_recon = np.array([ xcont_recon_min + j*dt for j in range(nrecon_cont) ])
-
-
-    ################################
-    #Get xline_recon
-    xline_recon_min = xline.min() - min( .1*(xline.max() - xline.min()), 10. )
-    if t_input <= 0.:
-        xline_recon_min = max( xline_recon_min, xcont_recon_min + timeback )
-
-    xline_recon_max = xline.max() + min( .1*(xline.max() - xline.min()), 10. )
-    xline_recon_max = min( xline_recon_max, xcont_recon_max - 1. )
-    
-    dt = (xline_recon_max - xline_recon_min)/(nrecon_line-1)
-    xline_recon = np.array([ xline_recon_min + j*dt for j in range(nrecon_line) ])
-
-    ################################
-    # Get pow_xcont, xcont_med
-    tspan_cont = xcont.max() - xcont.min()    
-    tspan = xline.max() - xcont.min()
-    xcont_med = .5*(xcont.max() + xcont.min())
-    
-    pow_xcont = np.zeros(ndifftrend)
-    for i in range(ndifftrend):
-        pow_xcont[i] = ( (xcont.max() - xcont_med)**(i+2) - (xcont.min() - xcont_med)**(i+2) )/(i+2)/tspan_cont
-    
-    
-    ################################
-    # Get idx_resp
-    
-    #For P14 model
-    nblrmodel = 17
-    nblr = nblrmodel + nnlr + nres + nlinecenter + 1
-    
-    nparams = nrecon_cont + nblr + nvar
-    idx_resp = nblr + ndrw + ntrend
-    idx_difftrend = idx_resp + nresp
-    idx_linecenter = nblrmodel + nnlr + nres
-    
-    
-    ################################
-    # Get line LC
-    
-    dv = np.diff(vel_line)[0]
-    
-    yline = np.zeros(len(xline))
-    yerr_line = np.zeros(len(xline))
-    
-    
-    line_err_mean = np.mean(line2d_err)
-    for i in range(len(xline)):
-        yline[i] = line2d[i,0]/2.
-        yerr_line[i] = line2d_err[i,0]*line2d_err[i,0]/2. 
-        
-        for j in range(1, len(vel_line)):
-            yline[i] += line2d[i,j]
-            yerr_line[i] += line2d_err[i,j]*line2d_err[i,j]   
-            
-        yline[i] += line2d[i,-1]/2.
-        yerr_line[i] += line2d_err[i,-1]*line2d_err[i,-1]/2.
-        
-        yline[i] *= dv
-        yerr_line[i] = np.sqrt(yerr_line[i])*dv
-    
-    ################################
-    # Rescale light curves
-    
-    cont_err_mean = np.mean(yerr_cont)
-    
-    cont_avg = np.mean(ycont)
-    cont_scale = 1/cont_avg
-    
-    line_avg = np.mean(yline)
-    line_scale = 1/line_avg
-    
-    ycont *= cont_scale
-    yerr_cont *= cont_scale
-    cont_err_mean *= cont_scale
-    
-    yline *= line_scale
-    yerr_line *= line_scale
-    line2d *= line_scale
-    line2d_err *= line_scale
-    line_err_mean *= line_scale
-    
     ################################
     # Run
-    xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, \
-    xline_recon, vel_line_ext, line2D_recon = reconstruct_line2d(model_params, 
-                                                      xcont, ycont, yerr_cont, xline,
-                                                      xcont_recon, xline_recon, vel_line,
-                                                      ntau, nq, nvar,
-                                                      pow_xcont, xcont_med,
-                                                      idx_resp, flag_trend_diff, ndifftrend,
-                                                      r_input, t_input, ncloud, vel_per_cloud, EPS,
-                                                      flag_inst_res, inst_res, inst_res_err,
-                                                      nblrmodel, nnlr, nblr)    
-
+    ycont_rm, line2D_recon = reconstruct_line2d(model_params, data, ycont_recon)    
 
     ################################
     # Get line LCs
     
-    dv = np.diff(vel_line_ext)[0]
+    dv = np.diff(data.vel_line_ext)[0]
     
-    yline_recon = np.zeros(len(xline_recon))        
-    for i in range(len(xline_recon)):
+    yline_recon = np.zeros(len(data.xline_recon))        
+    for i in range(len(data.xline_recon)):
         yline_recon[i] = line2D_recon[i,0]/2.
         
-        for j in range(1, len(vel_line_ext)):
+        for j in range(1, len(data.vel_line_ext)):
             yline_recon[i] += line2D_recon[i,j]
             
         yline_recon[i] += line2D_recon[i,-1]/2.
@@ -505,65 +521,44 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     
     
     #Put light curve times into observed frame
-    xcont_recon *= (1+z)
-    xline_recon *= (1+z)
+    xcont_recon = data.xcont_recon.copy()
+    xline_recon = data.xline_recon.copy()
+    xcont_recon *= (1+data.z)
+    xline_recon *= (1+data.z)
     
     #Rescale light curves
-    ycont_recon /= cont_scale
-    yerr_cont_recon /= cont_scale
-    ycont_rm /= cont_scale
-    line2D_recon /= line_scale
-    yline_recon /= line_scale
+    ycont_recon_out = ycont_recon.copy()
+    yerr_cont_recon_out = yerr_cont_recon.copy()
+    ycont_recon_out /= data.cont_scale
+    yerr_cont_recon_out /= data.cont_scale
+    ycont_rm /= data.cont_scale
+    line2D_recon /= data.line_scale
+    yline_recon /= data.line_scale
     
     #Rescale velocities
-    vel_line_ext *= VEL_UNIT
+    vel_line_ext_out = data.vel_line_ext.copy()
+    vel_line_ext_out *= data.VEL_UNIT
     
-    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, yline_recon, vel_line_ext, line2D_recon
+    return xcont_recon, ycont_recon_out, yerr_cont_recon_out, ycont_rm, xline_recon, yline_recon, vel_line_ext_out, line2D_recon
     
 
-def reconstruct_line2d(model_params, 
-                       xcont, ycont, yerr_cont, xline,
-                       xcont_recon, xline_recon, vel_line, 
-                       nt, nq, nvar,
-                       pow_xcont, xcont_med, 
-                       idx_resp, flag_trend_diff, nparams_difftrend,
-                       r_input, t_input, ncloud, nvel_per_cloud, EPS,
-                       flag_inst_res, inst_res, inst_res_err,
-                       nblrmodel, nnlr, nblr):
-    
-    nvel_data_incr = 5
-    nvel_data_ext = len(vel_line) + 2*nvel_data_incr
-
-    dv = np.diff(vel_line)[0]
-    vel_line_ext = np.zeros(nvel_data_ext)
-    for i in range(nvel_data_incr+1):
-        vel_line_ext[i] = vel_line[0] - (nvel_data_incr - i)*dv
-        vel_line_ext[-1-i] = vel_line[-1] + (nvel_data_incr - i)*dv
-
-    for i in range(len(vel_line)):
-        vel_line_ext[i+nvel_data_incr] = vel_line[i]
-    
-    
-    
-    rmin, rmax, _ = get_rset_tset(xline, xcont, r_input, t_input)
+def reconstruct_line2d(model_params, data, ycont_recon):
     
     #Reconstruct continuum
-    ycont_recon, yerr_cont_recon = calculate_cont_from_model(model_params[nblr:], xcont, ycont, yerr_cont, 
-                                                             xcont_recon, nq, nvar)
-    ycont_rm = calculate_cont_rm(model_params, xcont_recon, ycont_recon, 
-                                 pow_xcont, xcont_med, 
-                                 idx_resp, flag_trend_diff, nparams_difftrend)
+    ycont_rm = calculate_cont_rm(model_params, data.xcont_recon, ycont_recon, 
+                                 data.pow_xcont, data.xcont_med, 
+                                 data.idx_resp, data.flag_trend_diff, data.nparams_difftrend)
     
     
     #Get transfer function (at data pts)
-    cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, ncloud, rmax, rmin, nvel_per_cloud)
-    psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, nt, vel_line_ext, EPS)
+    cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, data.ncloud, data.rmax, data.rmin, data.nvel_per_cloud)
+    psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, data.ntau, data.vel_line_ext, data.EPS)
 
     #Get line2D
-    line2D_recon = calculate_line2d_from_model(model_params, vel_line_ext, psi_tau, psi2D,
-                                               xline_recon, xcont_recon, ycont_rm,
-                                               flag_inst_res, inst_res, inst_res_err,
-                                               nblrmodel, nnlr)
+    line2D_recon = calculate_line2d_from_model(model_params, data.vel_line_ext, psi_tau, psi2D,
+                                               data.xline_recon, data.xcont_recon, ycont_rm,
+                                               data.flag_inst_res, data.inst_res, data.inst_res_err,
+                                               data.nblrmodel, data.nnlr)
     
     
-    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, vel_line_ext, line2D_recon
+    return ycont_rm, line2D_recon

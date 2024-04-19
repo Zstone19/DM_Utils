@@ -170,9 +170,9 @@ def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont,
 
 
 def calculate_cont_rm(model_params, 
-                    xcont_recon, ycont_recon,
-                    pow_xcont, xcont_med,
-                    idx_resp, flag_trend_diff, nparams_difftrend):
+                      xcont_recon, ycont_recon,
+                      pow_xcont, xcont_med,
+                      idx_resp, flag_trend_diff, nparams_difftrend):
     
     ycont_rm = np.zeros(len(xcont_recon))
     

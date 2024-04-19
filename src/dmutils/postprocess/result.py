@@ -23,7 +23,8 @@ from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
 from pypetal.utils.petalio import err2str
 
-from .modelgen import generate_clouds, generate_tfunc, get_rset_tset, get_cont_line2d_recon
+from .modelmath import calculate_cont_from_model
+from .modelgen import generate_clouds, generate_tfunc, get_rset_tset, get_cont_line2d_recon, DM_Data
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -34,6 +35,7 @@ class Result:
     def __init__(self, fname, line_name=None, latex_dir=None):
         self.bp = bplotlib(fname)
         self.paramfile_inputs = self.bp.param._parser._sections['dump']
+        self.data = DM_Data(self.bp, self.paramfile_inputs)
         
         #Load parameters
         self.z = float(self.paramfile_inputs['redshift'])
@@ -78,27 +80,20 @@ class Result:
 ################################ SAMPLE MODEL #################################
 ###############################################################################
 
+    #TODO: If we want to use the median sample, we will have to
+    #      reconstruct the continuum for each sample
+    #      then take the median and the 16-84 percentile as 
+    #      the value and errors
+
     def sample_model(self, best_type='med'):
-        GRAVITY = 6.672e-8
-        SOLAR_MASS = 1.989e33
-        CVAL = 2.9979e10
-        CM_PER_LD = CVAL*8.64e4
-        VEL_UNIT = np.sqrt( GRAVITY * 1.0e6 * SOLAR_MASS / CM_PER_LD ) / 1.0e5
-        C_UNIT = CVAL/1.0e5/VEL_UNIT
 
-        xcon, _, _ = self.bp.data['con_data'].T
-        xline = self.bp.data['line2d_data']['time']
-        xcon /= (1+self.z)
-        xline /= (1+self.z)
+        VEL_UNIT = self.data.VEL_UNIT        
+        rmin = self.data.rmin
+        rmax = self.data.rmax
         
-        r_input = float(self.paramfile_inputs['rcloudmax'])
-        t_input = float(self.paramfile_inputs['timeback'])
-        rmin, rmax, _ = get_rset_tset(xline, xcon, r_input, t_input)
-
-        ntau = len(self.bp.results['tau_rec'][0])
-        wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
-        self.psi_v = (CVAL/1e5)*( wl_vals - self.central_wl )/self.central_wl
-
+        ntau = self.data.ntau
+        self.psi_v = self.data.vel_line
+        
         if best_type == 'maxll':
             idx, _ = self.bp.find_max_prob()
             self.model_params = self.bp.results['sample'][idx,:]
@@ -111,22 +106,55 @@ class Result:
             raise ValueError('Invalid best_type')
 
 
+
         self.cloud_weights, self.cloud_taus, \
         self.cloud_coords, self.cloud_pcoords, \
         self.cloud_vels, self.cloud_vels_los = generate_clouds(self.model_params, self.ncloud, 
-                                                               rmax, rmin, 
-                                                               self.vel_per_cloud)
+                                                            rmax, rmin, 
+                                                            self.vel_per_cloud)
         
 
         self.psi_tau, _, self.psi_2d = generate_tfunc(self.cloud_taus, self.cloud_vels_los, self.cloud_weights, ntau, self.psi_v/VEL_UNIT, sys.float_info.epsilon)
 
         self.cloud_vels *= VEL_UNIT
         self.cloud_vels_los *= VEL_UNIT
+
+
+
+
+        xcont = self.data.xcont
+        ycont = self.data.ycont
+        yerr_cont = self.data.yerr_cont
+        nq = self.data.nq
+        nvar = self.data.nvar
+        xcont_recon = self.data.xcont_recon
+        if best_type != 'med':
+            self.ycont_recon, self.yerr_cont_recon = calculate_cont_from_model(self.model_params, xcont, ycont, yerr_cont, 
+                                                                               xcont_recon, nq, nvar)        
         
-        
-        self.xcont_recon, self.ycont_recon, self.yerr_cont_recon, self.ycont_rm, \
-        self.xline_recon, self.yline_recon, \
-        self.vel_line_ext, self.line2D_recon = get_cont_line2d_recon(self.model_params, self.res.bp, self.res.paramfile_inputs, sys.float_info.epsilon)
+        else:
+            samples = self.bp.results['sample']
+            
+            #For each sample, reconstruct the continuum
+            ycont_recon_tot = np.zeros( (samples.shape[0], self.data.nrecon_cont) )
+            yerr_cont_recon_tot = np.zeros( (samples.shape[0], self.data.nrecon_cont) )
+            
+            for i in range(samples.shape[0]):
+                model_params = samples[i,:]
+                yi, yerri = calculate_cont_from_model(model_params, xcont, ycont, yerr_cont, 
+                                                      xcont_recon, nq, nvar)
+                
+                ycont_recon_tot[i,:] = yi
+                yerr_cont_recon_tot[i,:] = yerri
+                
+            self.ycont_recon = np.median(ycont_recon_tot, axis=0)
+            self.yerr_cont_recon = np.percentile(ycont_recon_tot, 84, axis=0) - np.percentile(ycont_recon_tot, 16, axis=0)
+
+            
+        self.xcont_recon_out, self.ycont_recon_out, self.yerr_cont_recon_out, \
+        self.ycont_rm_out, self.xline_recon_out, self.yline_recon_out, \
+        self.vel_line_ext_out, self.line2D_recon = get_cont_line2d_recon(model_params, self.data, self.ycont_recon, self.yerr_cont_recon)
+            
         
         return
 
