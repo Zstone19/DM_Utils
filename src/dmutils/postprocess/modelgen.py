@@ -81,6 +81,12 @@ class DM_Data:
         self.xcont, self.ycont, self.yerr_cont = bp.data['con_data'].T
         self.xline = bp.data['line2d_data']['time']
         
+        self.xcont_out = self.xcont*(1+self.z)
+        self.xline_out = self.xline*(1+self.z)
+        self.ycont_out = self.ycont.copy()
+        self.yerr_cont_out = self.yerr_cont.copy()
+    
+        
         self.r_input = float(paramfile_inputs['rcloudmax'])
         self.t_input = float(paramfile_inputs['timeback'])
         self.rmin, self.rmax, self.timeback = get_rset_tset(self.xline, self.xcont, self.r_input, self.t_input)
