@@ -27,17 +27,7 @@ def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
         D[i] = A - a1*a1*S
         W[i] = 1./D[i] * (1. - a1*S)    
     
-    # Combine W, D, and phi into a semiseparable matrix C
-    n = len(xcont)
-    C = np.zeros((n, n))
-    for i in range(n):
-        C[i, i] = D[i]
-        if i > 0:
-            C[i, i-1] = W[i-1]
-        if i < n-1:
-            C[i, i+1] = -a1 * W[i+1]
-    
-    return C
+    return W, D, phi
 
 
 def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
