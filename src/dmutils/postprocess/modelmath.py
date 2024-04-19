@@ -3,8 +3,6 @@ import numpy as np
 import scipy.linalg as sla
 from scipy.interpolate import splev, splrep
 
-from anesthetic.tests.test_plot import test_1d_density_kwarg
-
 
 ###################################################################################################
 # MATH
