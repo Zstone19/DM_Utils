@@ -9,10 +9,9 @@ from numba import njit
 @njit(fastmath=True)
 def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
     
-    # phi = np.zeros(len(xcont))
-    # for i in range(len(xcont)):
-    #     phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
-    phi = np.exp( -c1 * np.diff(xcont) )
+    phi = np.zeros(len(xcont))
+    for i in range(len(xcont)):
+        phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
         
 
     S = 0.
