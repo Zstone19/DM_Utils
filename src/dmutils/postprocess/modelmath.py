@@ -102,6 +102,8 @@ def get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha):
 ###################################################################################################
 # MAIN FUNCTIONS
 
+
+#NEED TO CHECK THAT THIS WORKS BC ERROR IS ALWAYS NAN
 def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont, 
                               xcont_recon, nq, nvar):
     
