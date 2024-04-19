@@ -476,7 +476,7 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     ################################
     # Run
     xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, \
-    xline_recon, _, line2D_recon = reconstruct_line2d(model_params, 
+    xline_recon, vel_line_ext, line2D_recon = reconstruct_line2d(model_params, 
                                                       xcont, ycont, yerr_cont, xline,
                                                       xcont_recon, xline_recon, vel_line,
                                                       ntau, nq, nvar,
@@ -490,13 +490,13 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     ################################
     # Get line LCs
     
-    dv = np.diff(vel_line)[0]
+    dv = np.diff(vel_line_ext)[0]
     
     yline_recon = np.zeros(len(xline_recon))        
     for i in range(len(xline_recon)):
         yline_recon[i] = line2D_recon[i,0]/2.
         
-        for j in range(1, len(vel_line)):
+        for j in range(1, len(vel_line_ext)):
             yline_recon[i] += line2D_recon[i,j]
             
         yline_recon[i] += line2D_recon[i,-1]/2.
@@ -515,10 +515,10 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     line2D_recon /= line_scale
     yline_recon /= line_scale
     
+    #Rescale velocities
+    vel_line_ext *= VEL_UNIT
     
-    #Velocity will be in VEL_UNIT
-    
-    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, vel_line, line2D_recon
+    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, yline_recon, vel_line_ext, line2D_recon
     
 
 def reconstruct_line2d(model_params, 

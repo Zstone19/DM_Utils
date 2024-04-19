@@ -23,7 +23,7 @@ from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
 from pypetal.utils.petalio import err2str
 
-from .modelgen import generate_clouds, generate_tfunc, get_rset_tset
+from .modelgen import generate_clouds, generate_tfunc, get_rset_tset, get_cont_line2d_recon
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -120,10 +120,14 @@ class Result:
 
         self.psi_tau, _, self.psi_2d = generate_tfunc(self.cloud_taus, self.cloud_vels_los, self.cloud_weights, ntau, self.psi_v/VEL_UNIT, sys.float_info.epsilon)
 
-
         self.cloud_vels *= VEL_UNIT
         self.cloud_vels_los *= VEL_UNIT
-
+        
+        
+        self.xcont_recon, self.ycont_recon, self.yerr_cont_recon, self.ycont_rm, \
+        self.xline_recon, self.yline_recon, \
+        self.vel_line_ext, self.line2D_recon = get_cont_line2d_recon(self.model_params, self.res.bp, self.res.paramfile_inputs, sys.float_info.epsilon)
+        
         return
 
 
