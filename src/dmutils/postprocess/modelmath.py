@@ -5,7 +5,40 @@ from scipy.interpolate import splev, splrep
 
 
 ###################################################################################################
-# MATH
+# DRW MATH
+
+def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
+    
+    phi = np.zeros(len(xcont))
+    for i in range(len(xcont)):
+        phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
+
+    S = 0.
+    A = sigma[0]*sigma[0] + syserr*syserr + a1
+    
+    D = np.zeros(len(xcont))
+    W = np.zeros(len(xcont))
+    
+    D[0] = A
+    W[0] = 1./D[0]
+    for i in range(len(xcont)):
+        S = phi[i]*phi[i] * ( S + D[i-1]*W[i-1]*W[i-1] )
+        A = sigma[i]*sigma[i] + syserr*syserr + a1
+        D[i] = A - a1*a1*S
+        W[i] = 1./D[i] * (1. - a1*S)    
+    
+    # Combine W, D, and phi into a semiseparable matrix C
+    n = len(xcont)
+    C = np.zeros((n, n))
+    for i in range(n):
+        C[i, i] = D[i]
+        if i > 0:
+            C[i, i-1] = W[i-1]
+        if i < n-1:
+            C[i, i+1] = -a1 * W[i+1]
+    
+    return C
+
 
 def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
     Z = np.zeros_like(Larr)    
@@ -49,38 +82,7 @@ def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
         z[i] = z[i]/D[i] - W[i]*g
         
     return z
-    
-    
 
-def multiply_mat_MN_transposeA(A, B):
-    return np.dot(A, B.T)
-
-def multiply_matvec_MN_transposeA(A, x):
-    return np.dot(A.T, x)
-
-def inverse_pomat(A):
-    # A1 = sla.lapack.dpotrf(A, lower=0)
-    # A2 = sla.lapack.dpotri(A1, lower=0)
-    
-    # Aout = A2.copy()
-    
-    # for i in range(A.shape[0]):
-    #     for j in range(i):
-    #         Aout[i,j] = A2[j,i]
-            
-    return np.linalg.inv(A)
-
-def multiply_mat_MN(A, B):
-    return np.dot(A, B)
-    
-def Chol_decomp_L(A):            
-    return np.linalg.cholesky(A)
-
-def multiply_matvec(A, x):
-    return np.dot(A, x)
-
-def multiply_matvec_MN(A, x):
-    return np.dot(A, x)
 
 def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
     Z = np.zeros_like(Y)
@@ -175,39 +177,6 @@ def get_covar_Pmat(sigma, tau, alpha, xcont_recon):
             PSmat[j,i] = PSmat[i,j]
     
     return PSmat
-
-
-def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
-    
-    phi = np.zeros(len(xcont))
-    for i in range(len(xcont)):
-        phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
-
-    S = 0.
-    A = sigma[0]*sigma[0] + syserr*syserr + a1
-    
-    D = np.zeros(len(xcont))
-    W = np.zeros(len(xcont))
-    
-    D[0] = A
-    W[0] = 1./D[0]
-    for i in range(len(xcont)):
-        S = phi[i]*phi[i] * ( S + D[i-1]*W[i-1]*W[i-1] )
-        A = sigma[i]*sigma[i] + syserr*syserr + a1
-        D[i] = A - a1*a1*S
-        W[i] = 1./D[i] * (1. - a1*S)    
-    
-    # Combine W, D, and phi into a semiseparable matrix C
-    n = len(xcont)
-    C = np.zeros((n, n))
-    for i in range(n):
-        C[i, i] = D[i]
-        if i > 0:
-            C[i, i-1] = W[i-1]
-        if i < n-1:
-            C[i, i+1] = -a1 * W[i+1]
-    
-    return C
 
 
 
