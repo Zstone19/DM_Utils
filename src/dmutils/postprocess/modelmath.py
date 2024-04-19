@@ -77,9 +77,8 @@ def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
 def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
     m = Y.shape[0]
     n = Y.shape[1]
-    Z = np.zeros((n,m))
     
-    Y_flat = Y.flatten()
+    Y_flat = np.hstack(Y)
     Z_flat = np.zeros_like(Y)
     
     for j in range(m):
@@ -98,7 +97,8 @@ def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
         for i in range(n-2,-1,-1):
             g = phi[i+1] * (g + a1*Z_flat[(i+1)*m + j])
             Z_flat[i*m + j] = Z[i*m + j]/D[i] - W[i]*g
-        
+       
+ 
     Z = Z_flat.reshape((n,m))
 
     return Z
