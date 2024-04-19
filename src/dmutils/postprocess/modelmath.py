@@ -3,6 +3,8 @@ import numpy as np
 import scipy.linalg as sla
 from scipy.interpolate import splev, splrep
 
+from anesthetic.tests.test_plot import test_1d_density_kwarg
+
 
 ###################################################################################################
 # MATH
@@ -30,6 +32,27 @@ def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
 
 
     return Z
+
+
+def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
+    z = np.zeros_like(y)
+    n = len(z)
+    
+    f = 0.
+    z[0] = y[0]
+    for i in range(n):
+        f = phi[i] * (f + W[i-1] * z[i-1])
+        z[i] = y[i] - a1*f
+        
+    g = 0.
+    z[n-1] = z[n-1]/D[n-1]
+    for i in range(n-2,-1,-1):
+        g = phi[i+1] * (g + a1*z[i+1])
+        z[i] = z[i]/D[i] - W[i]*g
+        
+    return z
+    
+    
 
 def multiply_mat_MN_transposeA(A, B):
     return np.dot(A, B.T)
@@ -89,6 +112,36 @@ def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
 ###################################################################################################
 # UTILITY
 
+def get_Smat_both(sigma, tau, alpha, xcont, xcont_recon):
+    Smat = np.zeros((len(xcont_recon), len(xcont)))
+    
+    
+    for i in range(len(xcont_recon)):
+        t1 = xcont_recon[i]
+        
+        for j in range(len(xcont)):
+            t2 = xcont[j]
+            
+            Smat[i,j] = sigma*sigma*np.exp(- (np.abs(t1-t2)/tau)**alpha )
+    
+    return Smat
+
+
+def get_Smat_recon(sigma, tau, alpha, xcont_recon):
+    Smat = np.zeros((len(xcont_recon), len(xcont_recon)))
+    
+    for i in range(len(xcont_recon)):
+        t1 = xcont_recon[i]
+        
+        for j in range(i):
+            t2 = xcont_recon[j]
+            Smat[i,j] = sigma*sigma * np.exp( - (np.abs(t1-t2)/tau)**alpha )
+            Smat[j,i] = Smat[i,j]
+    
+    return Smat
+
+
+
 def get_Larr(xcon, nq):
     Larr = np.zeros((len(xcon), nq))
     for i in range(len(xcon)):
@@ -146,7 +199,17 @@ def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
         D[i] = A - a1*a1*S
         W[i] = 1./D[i] * (1. - a1*S)    
     
-    return W, D, phi
+    # Combine W, D, and phi into a semiseparable matrix C
+    n = len(xcont)
+    C = np.zeros((n, n))
+    for i in range(n):
+        C[i, i] = D[i]
+        if i > 0:
+            C[i, i-1] = W[i-1]
+        if i < n-1:
+            C[i, i+1] = -a1 * W[i+1]
+    
+    return C
 
 
 
@@ -156,60 +219,90 @@ def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
 def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_cont, 
                                             xcont_recon, nq, nvar):
     
-    cont_err_mean = np.mean(yerr_cont)
-    nrecon_cont = len(xcont_recon)
     
+    
+    #Original
+    #Lbuf = inv(C) L
+    #inv(Cq) = L^T Lbuf
+    #yq = Lbuf^T ycont     (yq=uq)
+    
+    #Cq = inv(inv(Cq))     
+    #ybuf = Cq yq          (ybuf)
+    
+    #Cq = decomp(Cq)
+    #Cq = Cq [sigmad]
+    #yq += ybuf            (yq=q)
+    
+    #y = ycont - L yq
+    
+    #PEmat1 = inv(C) S_both^T
+    #yrecon =  PEmat1^T y           (yrecon=shat)
+    
+    #PEmat2 = S_both PEmat1
+    
+    #PQmat = S_recon - PEmat2          (PQmat=Q)
+    #yerr_recon = sqrt(diag(PQmat))
+    
+    #PQmat = decomp(PQmat)
+    #y = PQmat [timseries_fit]
+
+    #ybuf = L_recon yq
+    #yrecon += y + ybuf
+    
+    
+        
+    
+    nrecon_cont = len(xcont_recon)
+    cont_err_mean = np.mean(yerr_cont)
     sys_err = ( np.exp(model_params[0]) - 1. )*cont_err_mean
     tau = np.exp(model_params[2])
     sigma = np.exp(model_params[1]) * np.sqrt(tau)
     
-    sigma2 = sigma*sigma
-    alpha = 1.
-    
-    
-    USmat = get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont)
-    W, D, phi = compute_semiseparable_drw(xcont, sigma2, 1./tau, yerr_cont, sys_err)
-    
+    #Get model params
+    yfit = np.atleast_1d(model_params[3:3+nq])   #[sigmad]
+    yfit2 = model_params[nvar:nvar+nrecon_cont] #timeseries...
+
+    #Get all matrices
     Larr = get_Larr(xcont, nq)
-    Lbuf = multiply_mat_semiseparable_drw(Larr, W, D, phi, sigma2)
-    Cq = multiply_mat_MN_transposeA(Larr, Lbuf)
-    
-    yq = multiply_matvec_MN_transposeA(Lbuf, ycont)
-    
-    Cq = inverse_pomat(Cq)
-    ybuf = multiply_mat_MN(Cq, yq)
-    
-    Cq = Chol_decomp_L(Cq)
-    yq = multiply_matvec(Cq, model_params[3])
-    
-    yq += ybuf
-    
-    ybuf = multiply_matvec_MN(Larr, yq)
-    y = ycont - ybuf
-    
-    PEmat1 = multiply_mat_transposeB_semiseparable_drw(USmat, W, D, phi, sigma2)
-    
-    y_cont_recon = multiply_mat_MN_transposeA(USmat, y)
-    
-    PEmat2 = multiply_mat_MN(USmat, PEmat1)
-    
-    PSmat = get_covar_Pmat(sigma, tau, alpha, xcont_recon)
-    
-    PQmat = PSmat - PEmat2
-    yerr_cont_recon = np.sqrt(np.diag(PQmat))
-    
-    PQmat = inverse_pomat(PQmat)
-    y = multiply_matvec(PQmat, model_params[nvar])
-    
     Larr_recon = get_Larr(xcont_recon, nq)
-    ybuf = multiply_matvec_MN(Larr_recon, yq)
+    S_both = get_Smat_both(sigma, tau, 1., xcont, xcont_recon)
+    S_recon = get_Smat_recon(sigma, tau, 1., xcont_recon)
+    W, D, phi = compute_semiseparable_drw(xcont, sigma*sigma, 1./tau, yerr_cont, sys_err)     #W, D, phi -> C
     
-    y_cont_recon += y + ybuf
     
-    return y_cont_recon, yerr_cont_recon
+    
+    Larr_flat = np.hstack(Larr)
+    S_both_flat = np.hstack(S_both)
+    
+    
+    Lbuf = multiply_mat_semiseparable_drw(Larr_flat, W, D, phi, sigma*sigma).reshape( (len(xcont), nq) )
+    Cqinv = Larr.T @ Lbuf
+    Cq = np.linalg.inv(Cqinv)
+    yq = Larr.T @ ycont
 
+    ybuf = Cq @ yq
 
-
+    Cq = np.linalg.cholesky(Cq)
+    Cq = Cq @ yfit
+    yq += ybuf
+        
+    y = ycont - Larr @ yq
+    
+    PEmat1 = multiply_mat_transposeB_semiseparable_drw(S_both_flat, W, D, phi, sigma*sigma).reshape( ( len(xcont), nrecon_cont ) )
+    yrecon = PEmat1.T @ y
+    
+    PEmat2 = S_both @ PEmat1
+    
+    PQmat = S_recon - PEmat2
+    yerr_recon = np.sqrt(np.diag(PQmat))
+    
+    PQmat = np.linalg.cholesky(PQmat)
+    y = PQmat @ yfit2
+    
+    ybuf = Larr_recon @ yq
+    yrecon += y + ybuf
+    
+    return yrecon, yerr_recon
 
 
 def calculate_cont_rm(model_params, 
