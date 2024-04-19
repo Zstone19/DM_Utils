@@ -150,11 +150,11 @@ class DM_Data:
         # Get pow_xcont, xcont_med
         tspan_cont = self.xcont.max() - self.xcont.min()    
         tspan = self.xline.max() - self.xcont.min()
-        xcont_med = .5*(self.xcont.max() + self.xcont.min())
+        self.xcont_med = .5*(self.xcont.max() + self.xcont.min())
         
         self.pow_xcont = np.zeros(self.ndifftrend)
         for i in range(self.ndifftrend):
-            self.pow_xcont[i] = ( (self.xcont.max() - xcont_med)**(i+2) - (self.xcont.min() - xcont_med)**(i+2) )/(i+2)/tspan_cont
+            self.pow_xcont[i] = ( (self.xcont.max() - self.xcont_med)**(i+2) - (self.xcont.min() - self.xcont_med)**(i+2) )/(i+2)/tspan_cont
 
         
         ################################
