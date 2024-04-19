@@ -1,17 +1,19 @@
-from re import X
 import numpy as np
 import scipy.linalg as sla
 from scipy.interpolate import splev, splrep
-
+from numba import njit
 
 ###################################################################################################
 # DRW MATH
 
+@njit(fastmath=True)
 def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
     
-    phi = np.zeros(len(xcont))
-    for i in range(len(xcont)):
-        phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
+    # phi = np.zeros(len(xcont))
+    # for i in range(len(xcont)):
+    #     phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
+    phi = np.exp( -c1 * np.diff(xcont) )
+        
 
     S = 0.
     A = sigma[0]*sigma[0] + syserr*syserr + a1
@@ -30,6 +32,7 @@ def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
     return W, D, phi
 
 
+@njit(fastmath=True)
 def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
     Z = np.zeros_like(Larr)    
     n = Larr.shape[0]
@@ -55,6 +58,7 @@ def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
     return Z
 
 
+@njit(fastmath=True)
 def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
     z = np.zeros_like(y)
     n = len(z)
@@ -74,12 +78,13 @@ def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
     return z
 
 
+@njit(fastmath=True)
 def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
     m = Y.shape[0]
     n = Y.shape[1]
     
     Y_flat = np.hstack(Y)
-    Z_flat = np.zeros_like(Y)
+    Z_flat = np.zeros_like(Y_flat)
     
     for j in range(m):
         f = 0.
@@ -96,7 +101,7 @@ def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
         
         for i in range(n-2,-1,-1):
             g = phi[i+1] * (g + a1*Z_flat[(i+1)*m + j])
-            Z_flat[i*m + j] = Z[i*m + j]/D[i] - W[i]*g
+            Z_flat[i*m + j] = Z_flat[i*m + j]/D[i] - W[i]*g
        
  
     Z = Z_flat.reshape((n,m))
@@ -107,6 +112,7 @@ def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
 ###################################################################################################
 # UTILITY
 
+@njit(fastmath=True)
 def get_Smat_both(sigma, tau, alpha, xcont, xcont_recon):
     Smat = np.zeros((len(xcont_recon), len(xcont)))
     
@@ -122,6 +128,7 @@ def get_Smat_both(sigma, tau, alpha, xcont, xcont_recon):
     return Smat
 
 
+@njit(fastmath=True)
 def get_Smat_recon(sigma, tau, alpha, xcont_recon):
     Smat = np.zeros((len(xcont_recon), len(xcont_recon)))
     
@@ -136,7 +143,7 @@ def get_Smat_recon(sigma, tau, alpha, xcont_recon):
     return Smat
 
 
-
+@njit(fastmath=True)
 def get_Larr(xcon, nq):
     Larr = np.zeros((len(xcon), nq))
     for i in range(len(xcon)):
@@ -145,6 +152,7 @@ def get_Larr(xcon, nq):
     return Larr
 
 
+@njit(fastmath=True)
 def get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont):
     nrecon_cont = len(xcont_recon)
     Umat = np.zeros((nrecon_cont, nrecon_cont))
@@ -159,6 +167,8 @@ def get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont):
 
     return Umat
 
+
+@njit(fastmath=True)
 def get_covar_Pmat(sigma, tau, alpha, xcont_recon):
     nrecon_cont = len(xcont_recon)
     PSmat = np.zeros((nrecon_cont, nrecon_cont))

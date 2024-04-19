@@ -419,7 +419,7 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     # Get idx_resp
     
     #For P14 model
-    nblrmodel = 8
+    nblrmodel = 17
     nblr = nblrmodel + nnlr + nres + nlinecenter + 1
     
     nparams = nrecon_cont + nblr + nvar
