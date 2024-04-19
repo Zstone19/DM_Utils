@@ -78,7 +78,7 @@ class DM_Data:
         self.t_input = float(paramfile_inputs['timeback'])
         
             #Already in rest-frame
-        self.xcont, ycont, yerr_cont = bp.data['con_data'].T
+        self.xcont, self.ycont, self.yerr_cont = bp.data['con_data'].T
         self.xline = bp.data['line2d_data']['time']
         
         self.r_input = float(paramfile_inputs['rcloudmax'])
