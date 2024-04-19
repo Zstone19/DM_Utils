@@ -22,7 +22,6 @@ def inverse_pomat(A):
 
 def chol_decomp_L(A):
     n = A.shape[0]
-    
     A1, info = sla.lapack.dpotrf(A, lower=1)
     
     Aout = A1.copy()
@@ -168,7 +167,7 @@ def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont,
     return yrecon, yerr_recon
 
 
-
+@njit(fastmath=True)
 def calculate_cont_rm(model_params, 
                       xcont_recon, ycont_recon,
                       pow_xcont, xcont_med,
