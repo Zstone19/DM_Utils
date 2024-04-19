@@ -1,145 +1,36 @@
 import numpy as np
 import scipy.linalg as sla
 from scipy.interpolate import splev, splrep
+from scipy.signal import fftconvolve
 from numba import njit
 
 ###################################################################################################
-# DRW MATH
+# UTILITY 
 
-@njit(fastmath=True)
-def compute_semiseparable_drw(xcont, a1, c1, sigma, syserr):
+def inverse_pomat(A):
+    n = A.shape[0]
+    A1, info = sla.lapack.dpotrf(A)
+    A2, info = sla.lapack.dpotri(A1)
     
-    phi = np.zeros(len(xcont))
-    for i in range(len(xcont)):
-        phi[i] = np.exp( -c1 * (xcont[i] - xcont[i-1]) )
-        
-
-    S = 0.
-    A = sigma[0]*sigma[0] + syserr*syserr + a1
-    
-    D = np.zeros(len(xcont))
-    W = np.zeros(len(xcont))
-    
-    D[0] = A
-    W[0] = 1./D[0]
-    for i in range(len(xcont)):
-        S = phi[i]*phi[i] * ( S + D[i-1]*W[i-1]*W[i-1] )
-        A = sigma[i]*sigma[i] + syserr*syserr + a1
-        D[i] = A - a1*a1*S
-        W[i] = 1./D[i] * (1. - a1*S)    
-    
-    return W, D, phi
-
-
-@njit(fastmath=True)
-def multiply_mat_semiseparable_drw(Larr, W, D, phi, a1):
-    Z = np.zeros_like(Larr)    
-    n = Larr.shape[0]
-    m = Larr.shape[1]
-    
-    for j in range(m):
-        f = 0.
-        Z[0,j] = Larr[0,j]
-        
-        for i in range(1,n):
-            f = phi[i] * (f + W[i-1] * Z[i-1,j])
-
-
-    for j in range(m):
-        g = 0.
-        Z[n-1,j] = Z[n-1,j]/D[n-1]
-        
-        for i in range(n-2,-1,-1):
-            g = phi[i+1] * (g + a1*Z[i+1,j])
-            Z[i,j] = Z[i,j]/D[i] - W[i]*g
-
-
-    return Z
-
-
-@njit(fastmath=True)
-def multiply_matvec_semiseparable_drw(y, W, D, phi, a1):
-    z = np.zeros_like(y)
-    n = len(z)
-    
-    f = 0.
-    z[0] = y[0]
+    Aout = A2.copy()
     for i in range(n):
-        f = phi[i] * (f + W[i-1] * z[i-1])
-        z[i] = y[i] - a1*f
-        
-    g = 0.
-    z[n-1] = z[n-1]/D[n-1]
-    for i in range(n-2,-1,-1):
-        g = phi[i+1] * (g + a1*z[i+1])
-        z[i] = z[i]/D[i] - W[i]*g
-        
-    return z
-
-
-@njit(fastmath=True)
-def multiply_mat_transposeB_semiseparable_drw(Y, W, D, phi, a1):
-    m = Y.shape[0]
-    n = Y.shape[1]
-    
-    Y_flat = Y.flatten()
-    Z_flat = np.zeros_like(Y_flat)
-    
-    for j in range(m):
-        f = 0.
-        Z_flat[0*m + j] = Y_flat[0 + j*n]
-        
-        for i in range(1,n):
-            f = phi[i] * (f + W[i-1] * Z_flat[(i-1)*m + j])
-            Z_flat[i*m + j] = Y_flat[i + j*n] - a1*f
-    
-    
-    for j in range(m):
-        g = 0.
-        Z_flat[(n-1)*m + j] = Z_flat[(n-1)*m + j]/D[n-1]
-        
-        for i in range(n-2,-1,-1):
-            g = phi[i+1] * (g + a1*Z_flat[(i+1)*m + j])
-            Z_flat[i*m + j] = Z_flat[i*m + j]/D[i] - W[i]*g
-       
- 
-    Z = Z_flat.reshape((n,m))
-
-    return Z
-
-
-###################################################################################################
-# UTILITY
-
-@njit(fastmath=True)
-def get_Smat_both(sigma, tau, alpha, xcont, xcont_recon):
-    Smat = np.zeros((len(xcont_recon), len(xcont)))
-    
-    
-    for i in range(len(xcont_recon)):
-        t1 = xcont_recon[i]
-        
-        for j in range(len(xcont)):
-            t2 = xcont[j]
-            
-            Smat[i,j] = sigma*sigma*np.exp(- (np.abs(t1-t2)/tau)**alpha )
-    
-    return Smat
-
-
-@njit(fastmath=True)
-def get_Smat_recon(sigma, tau, alpha, xcont_recon):
-    Smat = np.zeros((len(xcont_recon), len(xcont_recon)))
-    
-    for i in range(len(xcont_recon)):
-        t1 = xcont_recon[i]
-        
         for j in range(i):
-            t2 = xcont_recon[j]
-            Smat[i,j] = sigma*sigma * np.exp( - (np.abs(t1-t2)/tau)**alpha )
-            Smat[j,i] = Smat[i,j]
+            Aout[i,j] = Aout[j,i]
+            
+    return Aout
+
+
+def chol_decomp_L(A):
+    n = A.shape[0]
     
-    return Smat
+    A1, info = sla.lapack.dpotrf(A, lower=1)
+    
+    Aout = A1.copy()
+    for i in range(n):
+        for j in range(i+1, n):
+            Aout[i,j] = 0.
+            
+    return Aout
 
 
 @njit(fastmath=True)
@@ -152,27 +43,50 @@ def get_Larr(xcon, nq):
 
 
 @njit(fastmath=True)
-def get_covar_Umat(sigma, tau, alpha, xcont_recon, xcont):
-    nrecon_cont = len(xcont_recon)
-    Umat = np.zeros((nrecon_cont, nrecon_cont))
+def get_covar_Pmat(xcont, yerr_cont, sigma, tau, alpha, syserr):
     
-    for i in range(nrecon_cont):
+    PSmat = np.zeros((len(xcont), len(xcont)))
+    PCmat = np.zeros((len(xcont), len(xcont)))
+    
+    for i in range(len(xcont)):
+        t1 = xcont[i]
+        
+        for j in range(i):
+            t2 = xcont[j]
+            PSmat[i,j] = sigma*sigma * np.exp( - (np.abs(t1-t2)/tau)**alpha )
+            PSmat[j,i] = PSmat[i,j]
+            
+            PCmat[i,j] = PSmat[i,j]
+            PCmat[j,i] = PCmat[i,j]
+            
+        
+        PSmat[i,i] = sigma*sigma
+        
+        err2 = yerr_cont[i]*yerr_cont[i] + syserr*syserr 
+        PCmat[i,i] = PSmat[i,i] + err2
+    
+    return PSmat, PCmat
+
+
+@njit(fastmath=True)
+def get_covar_Umat(xcont_recon, xcont, sigma, tau, alpha):
+    USmat = np.zeros((len(xcont_recon), len(xcont)))
+                     
+    for i in range(len(xcont_recon)):
         t1 = xcont_recon[i]
         
         for j in range(len(xcont)):
             t2 = xcont[j]
-            
-            Umat[i,j] = sigma*sigma*np.exp(- (np.abs(t1-t2)/tau)**alpha )
+            USmat[i,j] = sigma*sigma*np.exp(- (np.abs(t1-t2)/tau)**alpha )                     
 
-    return Umat
+    return USmat
 
 
 @njit(fastmath=True)
-def get_covar_Pmat(sigma, tau, alpha, xcont_recon):
-    nrecon_cont = len(xcont_recon)
-    PSmat = np.zeros((nrecon_cont, nrecon_cont))
-
-    for i in range(nrecon_cont):
+def get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha):
+    PSmat = np.zeros((len(xcont_recon), len(xcont_recon)))
+    
+    for i in range(len(xcont_recon)):
         t1 = xcont_recon[i]
         
         for j in range(i):
@@ -181,98 +95,76 @@ def get_covar_Pmat(sigma, tau, alpha, xcont_recon):
             PSmat[j,i] = PSmat[i,j]
     
     return PSmat
+    
 
 
 
 ###################################################################################################
 # MAIN FUNCTIONS
 
-def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_cont, 
-                                            xcont_recon, nq, nvar):
-    
-    
-    
-    #Original
-    #Lbuf = inv(C) L
-    #inv(Cq) = L^T Lbuf
-    #yq = Lbuf^T ycont     (yq=uq)
-    
-    #Cq = inv(inv(Cq))     
-    #ybuf = Cq yq          (ybuf)
-    
-    #Cq = decomp(Cq)
-    #Cq = Cq [sigmad]
-    #yq += ybuf            (yq=q)
-    
-    #y = ycont - L yq
-    
-    #PEmat1 = inv(C) S_both^T
-    #yrecon =  PEmat1^T y           (yrecon=shat)
-    
-    #PEmat2 = S_both PEmat1
-    
-    #PQmat = S_recon - PEmat2          (PQmat=Q)
-    #yerr_recon = sqrt(diag(PQmat))
-    
-    #PQmat = decomp(PQmat)
-    #y = PQmat [timseries_fit]
-
-    #ybuf = L_recon yq
-    #yrecon += y + ybuf
-    
-    
-        
+def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont, 
+                              xcont_recon, nq, nvar):
     
     nrecon_cont = len(xcont_recon)
     cont_err_mean = np.mean(yerr_cont)
     sys_err = ( np.exp(model_params[0]) - 1. )*cont_err_mean
     tau = np.exp(model_params[2])
     sigma = np.exp(model_params[1]) * np.sqrt(tau)
+    alpha = 1.
     
     #Get model params
     yfit = np.atleast_1d(model_params[3:3+nq])   #[sigmad]
     yfit2 = model_params[nvar:nvar+nrecon_cont] #timeseries...
-
-    #Get all matrices
+    
     Larr = get_Larr(xcont, nq)
     Larr_recon = get_Larr(xcont_recon, nq)
-    S_both = get_Smat_both(sigma, tau, 1., xcont, xcont_recon)
-    S_recon = get_Smat_recon(sigma, tau, 1., xcont_recon)
-    W, D, phi = compute_semiseparable_drw(xcont, sigma*sigma, 1./tau, yerr_cont, sys_err)     #W, D, phi -> C
     
     
     
     
-    Lbuf = multiply_mat_semiseparable_drw(Larr, W, D, phi, sigma*sigma)
-    assert Lbuf.shape == (len(xcont), nq)
-    Cqinv = Larr.T @ Lbuf
-    Cq = np.linalg.inv(Cqinv)
-    yq = Larr.T @ ycont
+    
+    PSmat, PCmat = get_covar_Pmat(xcont, yerr_cont, sigma, tau, alpha, sys_err) #(ndat, ndat)
+    USmat = get_covar_Umat(xcont_recon, xcont, sigma, tau, alpha)               #(nrecon, ndat)
+    
+    PCmat = inverse_pomat(PCmat)                                             #(ndat, ndat)
+    
+    # inv(Cq) = L^T inv(C) L
+    ybuf = PCmat @ Larr                                                      #(ndat, nq)
+    Cq = Larr.T @ ybuf                                                       #(nq, nq)
+    
+    #yq = L^T inv(C) y
+    ybuf = PCmat @ ycont                                                     #(ndat,)
+    yq = Larr.T @ ybuf                                                       #(nq,)
 
-    ybuf = Cq @ yq
+    #ybuf = Cq yq
+    Cq = inverse_pomat(Cq)                                                   #(nq, nq)
+    ybuf = Cq @ yq                                                           #(nq,)
+    
+    Cq = chol_decomp_L(Cq)                                                   #(nq, nq)
+    yq = Cq @ yfit                                                            #(nq,)
+    yq += ybuf                                                               #(nq,)
+    
+    ybuf = Larr @ yq                                                         #(ndat,)
+    y = ycont - ybuf                                                         #(ndat,)
+    
+    ybuf = PCmat @ y                                                         #(ndat,)
+    yrecon = USmat @ ybuf                                                    #(nrecon,)
+    
+    PEmat1 = USmat @ PCmat                                                   #(nrecon, ndat)
+    PEmat2 = PEmat1 @ USmat.T                                                #(nrecon, nrecon)
 
-    Cq = np.linalg.cholesky(Cq)
-    Cq = Cq @ yfit
-    yq += ybuf
-        
-    y = ycont - Larr @ yq
+    PSmat = get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha)                #(nrecon, nrecon)
+    PQmat = PSmat - PEmat2                                                   #(nrecon, nrecon)
+    yerr_recon = np.sqrt(np.diag(PQmat))                                     #(nrecon,)
+
+    PQmat = chol_decomp_L(PQmat)                                             #(nrecon, nrecon)
+    yu = PQmat @ yfit2                                                        #(nrecon,)
     
-    PEmat1 = multiply_mat_transposeB_semiseparable_drw(S_both, W, D, phi, sigma*sigma)
-    assert PEmat1.shape == ( len(xcont), nrecon_cont )
-    yrecon = PEmat1.T @ y
-    
-    PEmat2 = S_both @ PEmat1
-    
-    PQmat = S_recon - PEmat2
-    yerr_recon = np.sqrt(np.diag(PQmat))
-    
-    PQmat = np.linalg.cholesky(PQmat)
-    y = PQmat @ yfit2
-    
-    ybuf = Larr_recon @ yq
-    yrecon += y + ybuf
+    yuq = Larr_recon @ yq                                                    #(nrecon,)
+    yrecon += yu + yuq                                                       #(nrecon,)
     
     return yrecon, yerr_recon
+
 
 
 def calculate_cont_rm(model_params, 
@@ -329,11 +221,9 @@ def interp_cont_rm(tp, spl, xcont_recon, ycont_rm):
     if tp < 0.:
         return ycont_rm[0]    
     elif tp < xcont_recon[-1]:
-        spl = splrep(xcont_recon, ycont_rm)
         return splev(tp, spl)        
     else:
-        return ycont_rm[-1]    
-    
+        return ycont_rm[-1]       
     
     
 def gkern(l=5, sig=1.):
@@ -358,14 +248,14 @@ def line_gaussian_smooth_2d(psi_v, xline_recon, line2D_recon,
         sigv = max(0., sigv)
         
         for i in range(len(xline_recon)):
-            line2D_recon_smooth[i] = np.convolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')
+            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')
         
     else:
         for i in range(len(xline_recon)):
             sigv = inst_res[i] + model_params[nblr_model + nnlr + i] * inst_res_err[i]
             sigv = max(0., sigv)
             
-            line2D_recon_smooth[i] = np.convolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')         
+            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')         
 
     
     return line2D_recon_smooth

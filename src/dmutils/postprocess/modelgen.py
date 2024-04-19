@@ -1,7 +1,7 @@
 import numpy as np
 from numba import njit, prange
 
-from .modelmath import (calculate_cont_from_model_semiseparable, 
+from .modelmath import (calculate_cont_from_model, 
                         calculate_cont_rm, calculate_line2d_from_model)
 
 
@@ -11,11 +11,11 @@ def get_rset_tset(xline, xcon, r_input, t_input):
     rmin_set = 0
     
     
-    tspan_data = xline.max() - xline.min()
-    tspan_con = xcon.max() - xcon.min()
-    tcad_data = max( np.diff(xline).max(), np.diff(xcon).max() )
+    tspan_data_con = xcon.max() - xcon.min()
+    tspan_data = xline.max() - xcon.min()    
+    tcad_data = np.max( [np.diff(xline).max(), np.diff(xcon).max(), tspan_data] )
     
-    tset = tspan_con + (xcon[0] - xline[0])
+    tset = tspan_data_con + (xcon[0] - xline[0])
     tset = max( 2*tcad_data, tset )
     
     
@@ -23,9 +23,11 @@ def get_rset_tset(xline, xcon, r_input, t_input):
     dt = xcon[0] - tset
     if (r_input > 0):
         dt = max( dt , xline[0] - r_input*2 )
-    elif (tset > 0):
+    elif (t_input > 0):
         dt = max( dt, xcon[0] - t_input )
     
+    tset = xcon[0] - dt
+
 
 
     rmax_set = tspan_data/2
@@ -336,11 +338,9 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     r_input = float(paramfile_inputs['rcloudmax'])
     t_input = float(paramfile_inputs['timeback'])
     
-    #Assuming in observed frame
+    #Already in rest-frame
     xcont, ycont, yerr_cont = bp.data['con_data'].T
     xline = bp.data['line2d_data']['time']
-    xcont /= (1+z)
-    xline /= (1+z)
     
     r_input = float(paramfile_inputs['rcloudmax'])
     t_input = float(paramfile_inputs['timeback'])
@@ -396,7 +396,7 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     #Get xline_recon
     xline_recon_min = xline.min() - min( .1*(xline.max() - xline.min()), 10. )
     if t_input <= 0.:
-        xline_recon_min = max( xline_recon.min, xcont_recon_min + timeback )
+        xline_recon_min = max( xline_recon_min, xcont_recon_min + timeback )
 
     xline_recon_max = xline.max() + min( .1*(xline.max() - xline.min()), 10. )
     xline_recon_max = min( xline_recon_max, xcont_recon_max - 1. )
@@ -450,7 +450,7 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
         yerr_line[i] += line2d_err[i,-1]*line2d_err[i,-1]/2.
         
         yline[i] *= dv
-        yerr_line[i] = np.sqrt(yerr_line)*dv
+        yerr_line[i] = np.sqrt(yerr_line[i])*dv
     
     ################################
     # Rescale light curves
@@ -479,14 +479,14 @@ def get_cont_line2d_recon(model_params, bp, paramfile_inputs, EPS):
     xline_recon, _, line2D_recon = reconstruct_line2d(model_params, 
                                                       xcont, ycont, yerr_cont, xline,
                                                       xcont_recon, xline_recon, vel_line,
-                                                      ntau, central_wl, nq, nvar,
+                                                      ntau, nq, nvar,
                                                       pow_xcont, xcont_med,
                                                       idx_resp, flag_trend_diff, ndifftrend,
                                                       r_input, t_input, ncloud, vel_per_cloud, EPS,
                                                       flag_inst_res, inst_res, inst_res_err,
                                                       nblrmodel, nnlr, nblr)    
-    
-    
+
+
     ################################
     # Get line LCs
     
@@ -531,11 +531,25 @@ def reconstruct_line2d(model_params,
                        flag_inst_res, inst_res, inst_res_err,
                        nblrmodel, nnlr, nblr):
     
+    nvel_data_incr = 5
+    nvel_data_ext = len(vel_line) + 2*nvel_data_incr
+
+    dv = np.diff(vel_line)[0]
+    vel_line_ext = np.zeros(nvel_data_ext)
+    for i in range(nvel_data_incr+1):
+        vel_line_ext[i] = vel_line[0] - (nvel_data_incr - i)*dv
+        vel_line_ext[-1-i] = vel_line[-1] + (nvel_data_incr - i)*dv
+
+    for i in range(len(vel_line)):
+        vel_line_ext[i+nvel_data_incr] = vel_line[i]
+    
+    
+    
     rmin, rmax, _ = get_rset_tset(xline, xcont, r_input, t_input)
     
     #Reconstruct continuum
-    ycont_recon, yerr_cont_recon = calculate_cont_from_model_semiseparable(model_params[nblr:], xcont, ycont, yerr_cont, 
-                                                                           xcont_recon, nq, nvar)
+    ycont_recon, yerr_cont_recon = calculate_cont_from_model(model_params[nblr:], xcont, ycont, yerr_cont, 
+                                                             xcont_recon, nq, nvar)
     ycont_rm = calculate_cont_rm(model_params, xcont_recon, ycont_recon, 
                                  pow_xcont, xcont_med, 
                                  idx_resp, flag_trend_diff, nparams_difftrend)
@@ -543,13 +557,13 @@ def reconstruct_line2d(model_params,
     
     #Get transfer function (at data pts)
     cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, ncloud, rmax, rmin, nvel_per_cloud)
-    psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, nt, vel_line, EPS)
+    psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, nt, vel_line_ext, EPS)
 
     #Get line2D
-    line2D_recon = calculate_line2d_from_model(model_params, vel_line, psi_tau, psi2D,
+    line2D_recon = calculate_line2d_from_model(model_params, vel_line_ext, psi_tau, psi2D,
                                                xline_recon, xcont_recon, ycont_rm,
                                                flag_inst_res, inst_res, inst_res_err,
                                                nblrmodel, nnlr)
     
     
-    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, vel_line, line2D_recon
+    return xcont_recon, ycont_recon, yerr_cont_recon, ycont_rm, xline_recon, vel_line_ext, line2D_recon
