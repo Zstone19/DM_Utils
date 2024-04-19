@@ -228,11 +228,9 @@ def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_con
     
     
     
-    Larr_flat = np.hstack(Larr)
-    S_both_flat = np.hstack(S_both)
     
-    
-    Lbuf = multiply_mat_semiseparable_drw(Larr_flat, W, D, phi, sigma*sigma).reshape( (len(xcont), nq) )
+    Lbuf = multiply_mat_semiseparable_drw(Larr, W, D, phi, sigma*sigma)
+    assert Lbuf.shape == (len(xcont), nq)
     Cqinv = Larr.T @ Lbuf
     Cq = np.linalg.inv(Cqinv)
     yq = Larr.T @ ycont
@@ -245,7 +243,8 @@ def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_con
         
     y = ycont - Larr @ yq
     
-    PEmat1 = multiply_mat_transposeB_semiseparable_drw(S_both_flat, W, D, phi, sigma*sigma).reshape( ( len(xcont), nrecon_cont ) )
+    PEmat1 = multiply_mat_transposeB_semiseparable_drw(S_both, W, D, phi, sigma*sigma)
+    assert PEmat1.shape == ( len(xcont), nrecon_cont )
     yrecon = PEmat1.T @ y
     
     PEmat2 = S_both @ PEmat1
