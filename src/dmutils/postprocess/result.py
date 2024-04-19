@@ -130,7 +130,7 @@ class Result:
         nblr = self.data.nblr
         xcont_recon = self.data.xcont_recon
         if best_type != 'med':
-            self.ycont_recon, self.yerr_cont_recon = calculate_cont_from_model(self.model_params[:nblr], xcont, ycont, yerr_cont, 
+            self.ycont_recon, self.yerr_cont_recon = calculate_cont_from_model(self.model_params[nblr:], xcont, ycont, yerr_cont, 
                                                                                xcont_recon, nq, nvar)        
         
         else:
@@ -142,7 +142,7 @@ class Result:
             
             for i in range(samples.shape[0]):
                 model_params = samples[i,:]
-                yi, yerri = calculate_cont_from_model(model_params[:nblr], xcont, ycont, yerr_cont, 
+                yi, yerri = calculate_cont_from_model(model_params[nblr:], xcont, ycont, yerr_cont, 
                                                       xcont_recon, nq, nvar)
                 
                 ycont_recon_tot[i,:] = yi
