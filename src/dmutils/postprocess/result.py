@@ -15,6 +15,7 @@ import numpy as np
 import astropy.constants as const
 from astropy.io import ascii
 from astropy.table import Table
+from tqdm import tqdm
 
 from scipy.ndimage import gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
@@ -23,8 +24,8 @@ from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
 from pypetal.utils.petalio import err2str
 
-from .modelmath import calculate_cont_from_model
-from .modelgen import generate_clouds, generate_tfunc, get_rset_tset, get_cont_line2d_recon, DM_Data
+from .modelmath import calculate_cont_from_model_semiseparable, calculate_cont_rm
+from .modelgen import generate_clouds, generate_tfunc_tot, get_cont_line2d_recon, DM_Data
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -87,12 +88,17 @@ class Result:
 
     def sample_model(self, best_type='med'):
 
+        #Do everything in VEL_UNIT and relative to mean
+        #No unit changes until after
+
+
         VEL_UNIT = self.data.VEL_UNIT        
         rmin = self.data.rmin
         rmax = self.data.rmax
         
         ntau = self.data.ntau
-        self.psi_v = self.data.vel_line
+        self.psi_v_recon = np.linspace(self.data.vel_line[0], self.data.vel_line[-1], self.data.nrecon_vel)
+        self.psi_v_atdata = self.data.vel_line_ext
         
         if best_type == 'maxll':
             idx, _ = self.bp.find_max_prob()
@@ -107,56 +113,163 @@ class Result:
 
 
 
+        #Generate clouds
         self.cloud_weights, self.cloud_taus, \
         self.cloud_coords, self.cloud_pcoords, \
         self.cloud_vels, self.cloud_vels_los = generate_clouds(self.model_params, self.ncloud, 
                                                             rmax, rmin, 
                                                             self.vel_per_cloud)
+
+        nsamp = len(self.bp.results['sample'])
+        self.ycont_recon_tot = np.zeros( ( nsamp, self.data.nrecon_cont ) )
+        self.yerr_cont_recon_tot = np.zeros( ( nsamp, self.data.nrecon_cont ) )
+        self.ycont_rm_tot = np.zeros( ( nsamp, self.data.nrecon_cont ) )
+        self.yline_recon_tot = np.zeros( ( nsamp, self.data.nrecon_line ) )
+        self.yerr_line_recon_tot = np.zeros( ( nsamp, self.data.nrecon_line ) )
+        self.psi2D_recon_tot = np.zeros( ( nsamp, ntau, self.data.nrecon_vel ) )
+        self.psi2D_atdata_tot = np.zeros( ( nsamp, ntau, len(self.data.vel_line_ext) ) )
+        self.line2D_recon_tot = np.zeros( ( nsamp, self.data.nrecon_line, self.data.nrecon_vel ) )
+        self.line2D_atdata_tot = np.zeros( ( nsamp, len(self.data.xline), len(self.data.vel_line) ) )
+
+
+
+        samples = self.bp.results['sample']
+        print('Getting samples')
+        for i, model_params in enumerate(tqdm(samples)):
+
+            #Generate clouds
+            cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, self.ncloud, 
+                                                                                 rmax, rmin, self.vel_per_cloud)
         
-
-        self.psi_tau, _, self.psi_2d = generate_tfunc(self.cloud_taus, self.cloud_vels_los, self.cloud_weights, ntau, self.psi_v/VEL_UNIT, sys.float_info.epsilon)
-
-        self.cloud_vels *= VEL_UNIT
-        self.cloud_vels_los *= VEL_UNIT
-
-
-
-
-        xcont = self.data.xcont
-        ycont = self.data.ycont
-        yerr_cont = self.data.yerr_cont
-        nq = self.data.nq
-        nvar = self.data.nvar
-        nblr = self.data.nblr
-        xcont_recon = self.data.xcont_recon
-        if best_type != 'med':
-            self.ycont_recon, self.yerr_cont_recon = calculate_cont_from_model(self.model_params[nblr:], xcont, ycont, yerr_cont, 
-                                                                               xcont_recon, nq, nvar)        
-        
-        else:
-            samples = self.bp.results['sample']
+            #Calculate psi2D
+                #At reconstruction points
+            self.psi_tau_recon, _, psi2D_recon = generate_tfunc_tot(cloud_taus, cloud_vels_los, 
+                                                                cloud_weights, ntau, self.psi_v_recon, 
+                                                                sys.float_info.epsilon)
+            self.psi2D_recon_tot[i] = psi2D_recon
             
-            #For each sample, reconstruct the continuum
-            ycont_recon_tot = np.zeros( (samples.shape[0], self.data.nrecon_cont) )
-            yerr_cont_recon_tot = np.zeros( (samples.shape[0], self.data.nrecon_cont) )
+                #At input data pts
+            self.psi_tau_atdata, _, psi2D_atdata = generate_tfunc_tot(cloud_taus, cloud_vels_los, 
+                                                                  cloud_weights, ntau, self.psi_v_atdata, 
+                                                                  sys.float_info.epsilon)
+            self.psi2D_atdata_tot[i] = psi2D_atdata
+
+    
+
+
+            #Reconstruct continuum
+            ycont_recon, yerr_cont_recon = calculate_cont_from_model_semiseparable(model_params[self.data.nblr:], 
+                                                                     self.data.xcont, self.data.ycont, self.data.yerr_cont, 
+                                                                     self.data.xcont_recon, self.data.nq, self.data.nvar,
+                                                                     self.data.cont_err_mean)
+            yerr_cont_recon = np.sqrt( np.abs(yerr_cont_recon.min()) + np.abs(yerr_cont_recon.max()) )
             
-            for i in range(samples.shape[0]):
-                model_params = samples[i,:]
-                yi, yerri = calculate_cont_from_model(model_params[nblr:], xcont, ycont, yerr_cont, 
-                                                      xcont_recon, nq, nvar)
+            self.ycont_recon_tot[i] = ycont_recon
+            self.yerr_cont_recon_tot[i] = yerr_cont_recon
                 
-                ycont_recon_tot[i,:] = yi
-                yerr_cont_recon_tot[i,:] = yerri
-                
-            self.ycont_recon = np.median(ycont_recon_tot, axis=0)
-            self.yerr_cont_recon = np.percentile(ycont_recon_tot, 84, axis=0) - np.percentile(ycont_recon_tot, 16, axis=0)
 
             
-        self.xcont_recon_out, self.ycont_recon_out, self.yerr_cont_recon_out, \
-        self.ycont_rm_out, self.xline_recon_out, self.yline_recon_out, \
-        self.vel_line_ext_out, self.line2D_recon = get_cont_line2d_recon(self.model_params, self.data, self.ycont_recon, self.yerr_cont_recon)
-            
+
+            #Reconstruct (detrended) continuum
+            ycont_rm = calculate_cont_rm(model_params, self.data.xcont_recon, ycont_recon, 
+                                         self.data.pow_xcont, self.data.xcont_med, 
+                                         self.data.idx_resp, self.data.flag_trend_diff, self.data.ndifftrend)
+            self.ycont_rm_tot[i] = ycont_rm
+                
+
+            #Reconstruct line2D
+                #At input data pts
+            line2D_atdata = get_cont_line2d_recon(model_params, self.data, self.data.xcont_recon, ycont_rm,
+                                                  self.psi_v_atdata, self.psi_tau_atdata, psi2D_atdata,
+                                                  self.data.xline)
+
+                #At reconstruction points
+            line2D_recon = get_cont_line2d_recon(model_params, self.data, self.data.xcont_recon, ycont_rm,
+                                                 self.psi_v_recon, self.psi_tau_recon, psi2D_recon,
+                                                 self.data.xline_recon)
+            self.line2D_recon_tot[i] = line2D_recon
+                
+                
+            #Remove the extra from the line2D_atdata
+            ind1 = self.data.nvel_data_incr
+            ind2 = -self.data.nvel_data_incr
+            self.line2D_atdata_tot[i] = line2D_atdata[:, ind1:ind2]
         
+
+
+        #Get median
+        self.ycont_recon = np.median(self.ycont_recon_tot, axis=0)
+        self.yerr_cont_recon = np.percentile(self.ycont_recon_tot, 84, axis=0) - np.percentile(self.ycont_recon_tot, 16, axis=0)
+        self.ycont_rm = np.median(self.ycont_rm_tot, axis=0)
+        self.yerr_cont_rm = np.percentile(self.ycont_rm_tot, 84, axis=0) - np.percentile(self.ycont_rm_tot, 16, axis=0)
+
+        self.psi2D_atdata = np.median(self.psi2D_atdata_tot, axis=0)
+        self.psi2D_atdata_err = np.percentile(self.psi2D_atdata_tot, 84, axis=0) - np.percentile(self.psi2D_atdata_tot, 16, axis=0)
+        self.psi2D_recon = np.median(self.psi2D_recon_tot, axis=0)
+        self.psi2D_recon_err = np.percentile(self.psi2D_recon_tot, 84, axis=0) - np.percentile(self.psi2D_recon_tot, 16, axis=0)
+        
+        self.line2D_atdata = np.median(self.line2D_atdata_tot, axis=0)
+        self.line2D_atdata_err = np.percentile(self.line2D_atdata_tot, 84, axis=0) - np.percentile(self.line2D_atdata_tot, 16, axis=0)
+        self.line2D_recon = np.median(self.line2D_recon_tot, axis=0)
+        self.line2D_recon_err = np.percentile(self.line2D_recon_tot, 84, axis=0) - np.percentile(self.line2D_recon_tot, 16, axis=0)
+        
+        
+
+
+        #Get syserr
+        cont_syserr_idx = self.data.idx_resp - self.data.nq - 3
+        line_syserr_idx = cont_syserr_idx - 1
+        
+        self.cont_syserr = ( np.exp( self.model_params[cont_syserr_idx] ) - 1. ) * self.data.cont_err_mean
+        self.line_syserr = ( np.exp( self.model_params[line_syserr_idx] ) - 1. ) * self.data.line_err_mean
+
+
+
+        ###################################
+        # Put into physical units
+        
+        #Get line LC
+        dv = np.diff(self.psi_v_recon)[0]
+        self.yline_recon = np.sum(self.line2D_recon, axis=1) * dv / self.data.line_scale
+        self.yerr_line_recon = np.sqrt( np.sum( self.line2D_recon_err**2, axis=1 ) ) * dv / self.data.line_scale
+        
+        dv = np.diff(self.psi_v_atdata)[0]
+        self.yline_recon_atdata = np.sum(self.line2D_atdata, axis=1) * dv / self.data.line_scale
+        self.yerr_line_recon_atdata = np.sqrt( np.sum( self.line2D_atdata_err**2, axis=1 ) ) * dv / self.data.line_scale
+
+
+        #Observed-frame
+        self.xcont_recon_out = self.data.xcont_recon*(1+self.z)
+        self.xline_recon_out = self.data.xline_recon*(1+self.z)
+        
+        #Physical (not relative) fluxes
+        self.cont_syserr_out = self.cont_syserr / self.data.cont_scale
+        self.line_syserr_out = self.line_syserr / self.data.line_scale
+        self.ycont_recon_out = self.ycont_recon / self.data.cont_scale
+        self.yerr_cont_recon_out = self.yerr_cont_recon / self.data.cont_scale
+        self.ycont_rm_out = self.ycont_rm / self.data.cont_scale
+        self.yerr_cont_rm_out = self.yerr_cont_rm / self.data.cont_scale
+        
+
+        #Physical velocities (km/s)
+        self.cloud_vels_out = self.cloud_vels * VEL_UNIT
+        self.cloud_vels_los_out = self.cloud_vels_los * VEL_UNIT
+        self.psi_v_recon_out = self.psi_v_recon * VEL_UNIT
+        self.psi_v_atdata_out = self.psi_v_atdata * VEL_UNIT
+        
+        #Convert line2D data
+        self.line2D_recon /= self.data.line_scale
+        self.line2D_recon_err /= self.data.line_scale
+        self.line2D_atdata /= self.data.line_scale
+        self.line2D_atdata_err /= self.data.line_scale
+
+
+        #Make units match up (sum in the observed frame)
+        self.yline_recon *= (self.central_wl / self.data.C_UNIT) * (1+self.z) * (1+self.z)
+        self.yerr_line_recon *= (self.central_wl / self.data.C_UNIT) * (1+self.z) * (1+self.z)
+        self.yline_recon_atdata *= (self.central_wl / self.data.C_UNIT) * (1+self.z) * (1+self.z)
+        self.yerr_line_recon_atdata *= (self.central_wl / self.data.C_UNIT) * (1+self.z) * (1+self.z)
+
         return
 
 
@@ -201,7 +314,7 @@ class Result:
         ff = 1.5
         
         idx, _ = self.bp.find_max_prob()
-        model_flux = self.bp.results['line2d_rec'][idx]
+        model_flux = np.median( self.bp.results['line2d_rec'], axis=0 )
         data_flux = self.bp.data['line2d_data']['profile'][:,:,1]
         
         vmin = np.min([np.min(model_flux), np.min(data_flux)])
@@ -371,23 +484,24 @@ class Result:
         Msol = const.M_sun.cgs.value
         
         #Get data
-        bh_idx, _ = self.bp.find_max_prob()
+        idx, _ = self.bp.find_max_prob()
         # bh_idx = self.bp.locate_bhmass()
         bh_idx = 8
+        model_params = np.median(self.bp.results['sample'], axis=0)
 
-        mbh = 10**( self.model_params[bh_idx]/np.log(10) + 6) * Msol
+        mbh = 10**( model_params[bh_idx]/np.log(10) + 6) * Msol
 
-        # wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
-        # t_vals = self.bp.results['tau_rec'][idx]
-        # vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl
+        wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
+        t_vals = self.bp.results['tau_rec'][idx]
+        vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl #km/s
         
-        env_vals = mbh * G/c/(self.psi_v*1e5)**2
+        env_vals = mbh * G/c/(vel_vals*1e5)**2
         env_vals /= 60*60*24 # convert to days
         
         
         
         
-        plot_arr = self.psi_2d.copy()
+        plot_arr = np.median(self.bp.results['tran2d_rec'], axis=0)
         plot_arr[ plot_arr > 1 ] = 0.
 
 
@@ -396,11 +510,11 @@ class Result:
 
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
-                    extent=[self.psi_v[0]/1000, self.psi_v[-1]/1000, self.psi_tau[0], self.psi_tau[-1]],
+                    extent=[vel_vals[0]/1000, vel_vals[-1]/1000, t_vals[0], t_vals[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
                     vmin=vmin, vmax=vmax)
 
-        ax.plot(self.psi_v/1000, env_vals, color='c', ls='--', lw=2)
+        ax.plot(vel_vals/1000, env_vals, color='c', ls='--', lw=2)
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -482,10 +596,27 @@ class Result:
             ax_in = False
         else:
             ax_in = True
+            
+            
+        fname = self.paramfile_inputs['filedir'] + '/' + self.paramfile_inputs['cloudsfileout']
+        x_vals, y_vals, z_vals, \
+        vx_vals, vy_vals, vz_vals, \
+        weights = np.loadtxt(fname, unpack=True)
+        
+        x_vals = x_vals[::self.data.vel_per_cloud]
+        y_vals = y_vals[::self.data.vel_per_cloud]
+        z_vals = z_vals[::self.data.vel_per_cloud]
+        weights = weights[::self.data.vel_per_cloud]
+        
+        vx_vals = np.reshape(vx_vals, (len(x_vals), self.data.vel_per_cloud))
+        vy_vals = np.reshape(vy_vals, (len(x_vals), self.data.vel_per_cloud))
+        vz_vals = np.reshape(vz_vals, (len(x_vals), self.data.vel_per_cloud))
+        
+        model_params = np.median(self.bp.results['sample'], axis=0)
 
 
-        inc = self.model_params[3]
-        rblr = 10**np.median(self.model_params[0]/np.log(10))
+        inc = model_params[3]
+        rblr = 10**np.median(model_params[0]/np.log(10))
                 
         x_rblr = np.linspace(bounds[0], bounds[1], 5000)
         y_rblr1 = np.sqrt(rblr**2 - x_rblr**2)
@@ -501,11 +632,11 @@ class Result:
         zline2 = zline1.copy()
         
         
-        x_vals, y_vals, z_vals = self.cloud_coords.T
-        vx_vals = self.cloud_vels[:,:,0]
-        vy_vals = self.cloud_vels[:,:,1]
-        vz_vals = self.cloud_vels[:,:,2]
-        weights = self.cloud_weights
+        # x_vals, y_vals, z_vals = self.cloud_coords.T
+        # vx_vals = self.cloud_vels[:,:,0]
+        # vy_vals = self.cloud_vels[:,:,1]
+        # vz_vals = self.cloud_vels[:,:,2]
+        # weights = self.cloud_weights
 
         
         
@@ -548,8 +679,7 @@ class Result:
         #Use the mean velocity
         vx_vals = np.mean(vx_vals, axis=1)
         vy_vals = np.mean(vy_vals, axis=1)
-        vz_vals = np.mean(vz_vals, axis=1)
-        
+        vz_vals = np.mean(vz_vals, axis=1)        
         
         
         sizes = 40*weights
@@ -557,14 +687,28 @@ class Result:
         if ax is None:
             fig, ax = plt.subplots(1, 2, figsize=(11,5), sharey=True)    
         
+
+        if vmax is None:
+            max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )  
+        else:
+            max_v = vmax
+    
+        if vmin is None:
+            min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
+        else:
+            min_v = vmin
         
-        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vy_vals[::skip]/1000, 
-                    marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm')
+        
+        
+        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=-vy_vals[::skip]/1000, 
+                    marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm',
+                    vmin=min_v/1000, vmax=max_v/1000)
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
         
 
-        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=vx_vals[::skip]/1000, 
-                        marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm_r')
+        ax[1].scatter(y_vals[::skip], z_vals[::skip], s=sizes[::skip], c=-vx_vals[::skip]/1000, 
+                        marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm',
+                        vmin=min_v/1000, vmax=max_v/1000)
         
 
         if plot_rblr:
@@ -599,17 +743,6 @@ class Result:
             plt.subplots_adjust(wspace=.08)
 
         if colorbar:
-            
-            if vmax is None:
-                max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )  
-            else:
-                max_v = vmax
-      
-            if vmin is None:
-                min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
-            else:
-                min_v = vmin
-            
             norm = Normalize(vmin=min_v/1000, vmax=max_v/1000)
             sm = ScalarMappable(norm=norm, cmap='coolwarm')
             cbar = plt.colorbar(sm, ax=ax, pad=.01, aspect=15)
@@ -656,12 +789,22 @@ class Result:
         
         """
         
+        
+        fname = self.paramfile_inputs['filedir'] + '/' + self.paramfile_inputs['cloudsfileout']
+        x_vals, y_vals, z_vals, \
+        vx_vals, vy_vals, vz_vals, \
+        weights = np.loadtxt(fname, unpack=True)
 
-        x_vals, y_vals, z_vals = self.cloud_coords.T
-        vx_vals = self.cloud_vels[:,:,0]
-        vy_vals = self.cloud_vels[:,:,1]
-        vz_vals = self.cloud_vels[:,:,2]
-        weights = self.cloud_weights
+        x_vals = x_vals[::self.data.vel_per_cloud]
+        y_vals = y_vals[::self.data.vel_per_cloud]
+        z_vals = z_vals[::self.data.vel_per_cloud]
+        weights = weights[::self.data.vel_per_cloud]
+
+        # x_vals, y_vals, z_vals = self.cloud_coords.T
+        # vx_vals = self.cloud_vels[:,:,0]
+        # vy_vals = self.cloud_vels[:,:,1]
+        # vz_vals = self.cloud_vels[:,:,2]
+        # weights = self.cloud_weights
         
         
         
@@ -676,11 +819,15 @@ class Result:
         
         
         
+        vx_reshape = vx_vals.reshape( (len(x_vals), self.data.vel_per_cloud) )
+        vy_reshape = vy_vals.reshape( (len(y_vals), self.data.vel_per_cloud) )
+        vz_reshape = vz_vals.reshape( (len(z_vals), self.data.vel_per_cloud) )
         
         
-        vx_sum = np.sum(vx_vals, axis=1)
-        vy_sum = np.sum(vy_vals, axis=1)
-        vz_sum = np.sum(vz_vals, axis=1)
+        
+        vx_sum = np.mean(vx_reshape, axis=1)
+        vy_sum = np.mean(vy_reshape, axis=1)
+        vz_sum = np.mean(vz_reshape, axis=1)
         weights_sum = weights.copy()        
 
 
@@ -1114,7 +1261,7 @@ class Result:
     
     
     
-    def summary2(self, bounds=[-50, 50], plot_rblr=True, weight=True, output_fname=None, show=False):
+    def summary2(self, bounds=[-50, 50], skip_clouds=10, plot_rblr=True, weight=True, output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
         gs_tot = gridspec.GridSpec(2, 4, figure=fig, wspace=.1)
@@ -1123,7 +1270,7 @@ class Result:
         #LEFT: Quiver Plot
         ax_l = fig.add_subplot(gs_tot[:2,:2], projection='3d')
         max_r = np.mean(np.abs(bounds))
-        ax_l = self.cloud_quiver_plot(max_r=max_r, length=5, color=False, ax=ax_l, show=False)
+        ax_l = self.cloud_quiver_plot(skip=skip_clouds, max_r=max_r, length=5, color=False, ax=ax_l, show=False)
         
         
         #TOP RIGHT: Cloud Positions
@@ -1132,7 +1279,7 @@ class Result:
         ax2 = fig.add_subplot(gs_tr[1], sharey=ax1, sharex=ax1)
         ax_tr = [ax1, ax2]
         
-        ax_tr = self.plot_clouds(plot_rblr=plot_rblr, colorbar=True, bounds=bounds, ax=ax_tr, show=False)
+        ax_tr = self.plot_clouds(skip=skip_clouds, plot_rblr=plot_rblr, colorbar=True, bounds=bounds, ax=ax_tr, show=False)
         
             #Set cloud labels
         ax_tr[0].set_title('Side View', fontsize=22)
@@ -1289,9 +1436,9 @@ class Result:
     
     
 ###############################################################################
-###############################################################################
+##############################################################################
 ############################################################################### 
-    
+
     
 def val2latex(vals, n=2):
     val = np.median(vals)

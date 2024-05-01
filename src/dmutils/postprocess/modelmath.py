@@ -5,6 +5,83 @@ from scipy.signal import fftconvolve
 from numba import njit
 
 ###################################################################################################
+# SEMISEPARABLE
+
+@njit(fastmath=True)
+def compute_invC_semiseparable(x, a1, c1, sigma, syserr):
+    n = len(x)
+    
+    D = np.zeros(n)
+    W = np.zeros(n)
+    phi = np.zeros(n)
+    
+    for i in range(1, n):
+        phi[i] = np.exp( -c1*(x[i]-x[i-1]) )    
+
+    S = 0.
+    A = sigma[0]*sigma[0] + syserr*syserr + a1
+    
+    D[0] = A
+    W[0] = 1./D[0] 
+    for i in range(1, n):
+        S = phi[i]*phi[i] * (S + D[i-1]*W[i-1]*W[i-1])
+        A = sigma[i]*sigma[i] + syserr*syserr + a1
+        
+        D[i] = A - a1*a1*S
+        W[i] = 1./D[i] * (1. - a1*S)  
+    
+    return phi, D, W
+
+
+@njit(fastmath=True)
+def matmultvec_invC(y, a1, phi, D, W):
+    #z = invC y
+    n = len(y)
+    z = np.zeros(n)
+    
+    f = 0.
+    z[0] = y[0]
+    for i in range(1, n):
+        f = phi[i] * (f + W[i-1]*z[i-1])
+        z[i] = y[i] - a1*f
+        
+    g = 0.
+    for i in range(n-2, -1, -1):
+        g = phi[i+1] * (g + a1*z[i+1])
+        z[i] = z[i]/D[i] - W[i]*g
+        
+    return z
+
+
+
+@njit(fastmath=True)
+def matmult_invC(Y, a1, phi, D, W):
+    #Z = invC Y
+    n, m = Y.shape
+    Z = np.zeros_like(Y)
+
+    for j in range(m):
+        f = 0.
+        Z[0,j] = Y[0,j]
+        
+        for i in range(1, n):
+            f = phi[i] * (f + W[i-1]*Z[i-1,j])
+            Z[i,j] = Y[i,j] - a1*f
+            
+            
+    for j in range(m):
+        g = 0.
+        Z[-1,j] = Z[-1,j]/D[n-1]
+        
+        for i in range(n-2, -1, -1):
+            g = phi[i+1] * (g + a1*Z[i+1,j])
+            Z[i,j] = Z[i,j]/D[i] - W[i]*g
+
+
+    return np.atleast_2d(Z)
+
+
+###################################################################################################
 # UTILITY 
 
 def inverse_pomat(A):
@@ -38,7 +115,8 @@ def get_Larr(xcon, nq):
     for i in range(len(xcon)):
         for j in range(nq):
             Larr[i,j] = xcon[i]**j    
-    return Larr
+
+    return np.atleast_2d(Larr)
 
 
 @njit(fastmath=True)
@@ -98,24 +176,59 @@ def get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha):
 
 
 
+
+
+
+@njit(fastmath=True)
+def get_Sboth_semisep(xcont_recon, xcont, sigma, tau, alpha):
+    USmat = np.zeros((len(xcont_recon), len(xcont)))
+    
+    for i in range(len(xcont_recon)):
+        t1 = xcont_recon[i]
+        
+        for j in range(len(xcont)):
+            t2 = xcont[j]
+            USmat[i,j] = sigma*sigma * np.exp( - (np.abs(t1-t2)/tau)**alpha )            
+
+    return USmat
+
+
+
+@njit(fastmath=True)
+def get_Srecon_semisep(xcont_recon, sigma, tau, alpha):
+    PSmat = np.zeros((len(xcont_recon), len(xcont_recon)))
+    
+    for i in range(len(xcont_recon)):
+        t1 = xcont_recon[i]
+        
+        for j in range(i):
+            t2 = xcont_recon[j]
+            PSmat[i,j] = sigma*sigma * np.exp( - (np.abs(t1-t2)/tau)**alpha )            
+            PSmat[j,i] = PSmat[i,j]
+
+
+    return PSmat
+
+
+
+
 ###################################################################################################
 # MAIN FUNCTIONS
 
 
 #NEED TO CHECK THAT THIS WORKS BC ERROR IS ALWAYS NAN
 def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont, 
-                              xcont_recon, nq, nvar):
+                              xcont_recon, nq, nvar, cont_err_mean):
     
     nrecon_cont = len(xcont_recon)
-    cont_err_mean = np.mean(yerr_cont)
     sys_err = ( np.exp(model_params[0]) - 1. )*cont_err_mean
     tau = np.exp(model_params[2])
     sigma = np.exp(model_params[1]) * np.sqrt(tau)
     alpha = 1.
     
     #Get model params
-    yfit = np.atleast_1d(model_params[3:3+nq])   #[sigmad]
-    yfit2 = model_params[nvar:nvar+nrecon_cont] #timeseries...
+    uq = np.atleast_1d(model_params[3:3+nq])   #[sigmad] = uq
+    us = model_params[nvar:nvar+nrecon_cont] #timeseries... = us
     
     Larr = get_Larr(xcont, nq)
     Larr_recon = get_Larr(xcont_recon, nq)
@@ -124,47 +237,81 @@ def calculate_cont_from_model(model_params, xcont, ycont, yerr_cont,
     
     
     
-    PSmat, PCmat = get_covar_Pmat(xcont, yerr_cont, sigma, tau, alpha, sys_err) #(ndat, ndat)
-    USmat = get_covar_Umat(xcont_recon, xcont, sigma, tau, alpha)               #(nrecon, ndat)
+    _, C = get_covar_Pmat(xcont, yerr_cont, sigma, tau, alpha, sys_err)  #(ndat, ndat)
+    invC = np.linalg.inv(C)                                              #(ndat, ndat)
     
-    PCmat = inverse_pomat(PCmat)                                             #(ndat, ndat)
-    
-    # inv(Cq) = L^T inv(C) L
-    ybuf = PCmat @ Larr                                                      #(ndat, nq)
-    Cq = Larr.T @ ybuf                                                       #(nq, nq)
-    
-    #yq = L^T inv(C) y
-    ybuf = PCmat @ ycont                                                     #(ndat,)
-    yq = Larr.T @ ybuf                                                       #(nq,)
+    S_both = get_covar_Umat(xcont_recon, xcont, sigma, tau, alpha)       #(nrecon, ndat)
+    S_recon = get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha)       #(nrecon, nrecon)
 
-    #ybuf = Cq yq
-    Cq = inverse_pomat(Cq)                                                   #(nq, nq)
-    ybuf = Cq @ yq                                                           #(nq,)
+    Cq = np.linalg.inv(Larr.T @ invC @ Larr)                             #(nq, nq)
+    dCq = np.linalg.cholesky(Cq)                                         #(nq, nq)
     
-    Cq = chol_decomp_L(Cq)                                                   #(nq, nq)
-    yq = Cq @ yfit                                                            #(nq,)
-    yq += ybuf                                                               #(nq,)
+    yq = (dCq @ uq) + (Cq @ Larr.T @ invC @ ycont)                       #(nq,)
+    y_detrend = ycont - (Larr @ yq)                                      #(ndat,)
     
-    ybuf = Larr @ yq                                                         #(ndat,)
-    y = ycont - ybuf                                                         #(ndat,)
+    Q = S_recon - (S_both @ invC @ S_both.T)                             #(nrecon, nrecon)
+    yerr_recon2 = np.diag(Q)                                             #(nrecon,)
     
-    ybuf = PCmat @ y                                                         #(ndat,)
-    yrecon = USmat @ ybuf                                                    #(nrecon,)
-    
-    PEmat1 = USmat @ PCmat                                                   #(nrecon, ndat)
-    PEmat2 = PEmat1 @ USmat.T                                                #(nrecon, nrecon)
+    try:
+        dQ = np.linalg.cholesky(Q)                                                #(nrecon, nrecon)
+    except:
+        dQ = chol_decomp_L(Q)
 
-    PSmat = get_covar_Pmat_recon(xcont_recon, sigma, tau, alpha)                #(nrecon, nrecon)
-    PQmat = PSmat - PEmat2                                                   #(nrecon, nrecon)
-    yerr_recon = np.sqrt(np.diag(PQmat))                                     #(nrecon,)
+    yrecon = (S_both @ invC @ y_detrend) + (dQ @ us) + (Larr_recon @ yq) #(nrecon,)
+    
+    return yrecon, yerr_recon2
 
-    PQmat = chol_decomp_L(PQmat)                                             #(nrecon, nrecon)
-    yu = PQmat @ yfit2                                                        #(nrecon,)
+
+
+
+
+def calculate_cont_from_model_semiseparable(model_params, xcont, ycont, yerr_cont, 
+                                            xcont_recon, nq, nvar, cont_err_mean):
     
-    yuq = Larr_recon @ yq                                                    #(nrecon,)
-    yrecon += yu + yuq                                                       #(nrecon,)
+    nrecon_cont = len(xcont_recon)
+    sys_err = ( np.exp(model_params[0]) - 1. )*cont_err_mean
+    tau = np.exp(model_params[2])
+    sigma = np.exp(model_params[1]) * np.sqrt(tau)
+    alpha = 1.
     
-    return yrecon, yerr_recon
+    #Get model params
+    uq = np.atleast_1d(model_params[3:3+nq])   #[sigmad] = uq
+    us = model_params[nvar:nvar+nrecon_cont] #timeseries... = us
+    
+    Larr = get_Larr(xcont, nq)
+    Larr_recon = get_Larr(xcont_recon, nq)
+    
+    
+    
+    
+    
+    phi, D, W = compute_invC_semiseparable(xcont, sigma*sigma, 1./tau, yerr_cont, sys_err)
+    S_both = get_Sboth_semisep(xcont_recon, xcont, sigma, tau, alpha)    #(nrecon, ndat)
+    S_recon = get_Srecon_semisep(xcont_recon, sigma, tau, alpha)         #(nrecon, nrecon)
+    Amat = matmult_invC(S_both.T, sigma*sigma, phi, D, W)                #(ndat, nrecon)
+    
+    invCq = Larr.T @ matmult_invC(Larr, sigma*sigma, phi, D, W)          #(nq, nq)
+    Cq = np.linalg.inv(invCq)                                            #(nq, nq)
+    dCq = np.linalg.cholesky(Cq)                                         #(nq, nq)
+    
+    ycq = matmultvec_invC(ycont, sigma*sigma, phi, D, W)                 #(nq,)
+    yq = (dCq @ uq) + (Cq @ Larr.T @ ycq)                                #(nq,)
+    y_detrend = ycont - (Larr @ yq)                                      #(ndat,)
+    
+    E2 = S_both @ Amat
+    Q = S_recon - E2                                                     #(nrecon, nrecon)
+    yerr_recon2 = np.diag(Q)                                             #(nrecon,)
+    
+    try:
+        dQ = np.linalg.cholesky(Q)                                       #(nrecon, nrecon)
+    except:
+        dQ = chol_decomp_L(Q)
+
+    Amat = matmult_invC(S_both.T, sigma*sigma, phi, D, W)
+    yrecon = (Amat.T @ y_detrend) + (dQ @ us) + (Larr_recon @ yq)       #(nrecon,)
+    
+    return yrecon, yerr_recon2
+
 
 
 @njit(fastmath=True)
@@ -224,7 +371,7 @@ def interp_cont_rm(tp, spl, xcont_recon, ycont_rm):
     elif tp < xcont_recon[-1]:
         return splev(tp, spl)        
     else:
-        return ycont_rm[-1]       
+        return ycont_rm[-1]
     
     
 def gkern(l=5, sig=1.):
@@ -236,70 +383,154 @@ def gkern(l=5, sig=1.):
     return kernel / np.sum(kernel)
     
     
-def line_gaussian_smooth_2d(psi_v, xline_recon, line2D_recon, 
-                            model_params,
+def line_gaussian_smooth_2d(line2D_recon, model_params, dv,
                             flag_inst_res, inst_res, inst_res_err,
                             nblr_model, nnlr):
     
 
     line2D_recon_smooth = np.zeros_like(line2D_recon)
+    nl, nv = line2D_recon.shape
+    
     
     if flag_inst_res <= 1:
         sigv = inst_res + model_params[nblr_model + nnlr] * inst_res_err
         sigv = max(0., sigv)
         
-        for i in range(len(xline_recon)):
-            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')
+        for i in range(nl):
+            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(nv, sigv/dv), mode='same')
         
     else:
-        for i in range(len(xline_recon)):
+        for i in range(nl):
             sigv = inst_res[i] + model_params[nblr_model + nnlr + i] * inst_res_err[i]
             sigv = max(0., sigv)
             
-            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(len(psi_v), sigv), mode='same')         
+            line2D_recon_smooth[i] = fftconvolve(line2D_recon[i], gkern(nv, sigv/dv), mode='same')         
 
+    
+    return line2D_recon_smooth
+
+
+
+
+
+def line_gaussian_smooth_2dfft(line2D_recon, model_params,
+                               psi_v_recon, line2d_recon_time, 
+                               flag_inst_res, inst_res, inst_res_err,
+                               nblr_model, nnlr,
+                               flag_linecenter, linecenter_err, idx_linecenter):
+    
+
+    line2D_recon_smooth = np.zeros_like(line2D_recon)
+    nl, nv = line2D_recon.shape
+    
+    npad = int( min(nv*.1, 20) )
+    nd_fft = int(nv + 2*npad)
+    nd_fft_cal = int(nd_fft/2 + 1)
+    
+    
+    dv = np.diff(psi_v_recon)[0]
+    
+    if flag_inst_res <= 1:
+        sigv = inst_res + model_params[nblr_model + nnlr] * inst_res_err
+        sigv = max(0., sigv)        
+        
+        resp_fft0 = np.zeros((nd_fft_cal, 2))
+        resp_fft0[:,0] = np.exp( -2. * np.pi*np.pi * (sigv/dv)*(sigv/dv) * np.arange(0, nd_fft_cal)*np.arange(0, nd_fft_cal) /nd_fft/nd_fft ) / nd_fft
+
+        for i in range(nl):
+            if flag_linecenter == 0:
+                linecenter = 0.
+            elif flag_linecenter > 0:
+                linecenter = model_params[idx_linecenter] * linecenter_err
+            elif flag_linecenter < 0:
+                linecenter = model_params[idx_linecenter + j] * linecenter_err
+                
+            resp_fft = np.zeros((nd_fft_cal, 2))
+            resp_fft[:,0] = resp_fft[:,0] * np.cos( 2.*np.pi*linecenter/dv * np.arange(0, nd_fft_cal)/nd_fft )
+            resp_fft[:,1] = -resp_fft[:,0] * np.sin( 2.*np.pi*linecenter/dv * np.arange(0, nd_fft_cal)/nd_fft )
+
+            real_data = np.zeros(nd_fft)
+            real_data[npad:-npad] = line2D_recon[i]
+            data_fft = np.fft.fft(real_data, n=nd_fft)
+            
+            
+            conv_fft = np.zeros((nd_fft_cal, 2))
+            conv_fft[:,0] = np.real(data_fft)*resp_fft[:,0] - np.imag(data_fft)*resp_fft[:,1]
+            conv_fft[:,1] = np.real(data_fft)*resp_fft[:,1] + np.imag(data_fft)*resp_fft[:,0]
+             
+            real_conv = np.real(  np.fft.ifft(conv_fft, n=nd_fft)  )
+            line2D_recon_smooth = real_conv[npad:-npad]            
+
+        
+        
+    else:
+        for i in range(nl):
+            sigv = inst_res[i] + model_params[nblr_model + nnlr + i] * inst_res_err[i]
+            sigv = max(0., sigv)
+            
+            
+            
     
     return line2D_recon_smooth
     
 
 
-def calculate_line2d_from_model(model_params, psi_v, psi_tau, psi2D,
-                                xline_recon,
-                                xcont_recon, ycont_rm,
-                                flag_inst_res, inst_res, inst_res_err, 
-                                nblrmodel, nnlr):
+@njit(fastmath=True)
+def calculate_line2d_from_model_spl(psi_v, psi_tau, psi2D,
+                                line2d_recon_time,
+                                xcont_recon, ycont_rm):
+    
+    #Velocity of tfunc and line2d must be the same
+    spl = splrep(xcont_recon, ycont_rm)
+
+    line2D_recon = np.zeros( ( len(line2d_recon_time), len(psi_v) ) )
+    dt = psi_tau[1] - psi_tau[0]
+    nl = len(line2d_recon_time)
+    nv = len(psi_v)
+        
+    for i in range(nl):
+        tc_vals = line2d_recon_time[i] - psi_tau
+
+        fcon_rm_vals = np.full( len(tc_vals), np.nan )
+        fcon_rm_vals[ tc_vals < 0. ] = ycont_rm[0]
+        fcon_rm_vals[ tc_vals > xcont_recon[-1] ] = ycont_rm[-1]
+        
+        good_mask = ( (tc_vals >= 0.) & (tc_vals <= xcont_recon[-1]) )
+        fcon_rm_vals[good_mask] = splev(tc_vals[good_mask], spl)
+            
+        for j in range(nv):            
+            line2D_recon[i,j] = np.sum( np.multiply(psi2D[:,j], fcon_rm_vals) ) * dt
+    
+    
+    return line2D_recon
+
+
+
+
+@njit(fastmath=True)
+def calculate_line2d_from_model(psi_v, psi_tau, psi2D,
+                                line2d_recon_time,
+                                xcont_recon, ycont_rm):
     
     #Velocity of tfunc and line2d must be the same
 
-    
-    spl = splrep(xcont_recon, ycont_rm)
-    
-    line2D_recon = np.zeros( ( len(xline_recon), len(psi_v) ) )
+    line2D_recon = np.zeros( ( len(line2d_recon_time), len(psi_v) ) )
     dt = psi_tau[1] - psi_tau[0]
-    
-    nl = len(xline_recon)
+    nl = len(line2d_recon_time)
     nv = len(psi_v)
-    for j in range(nl):
-        tl = xline_recon[j]
         
-        for k in range(len(psi_tau)):
-            tau = psi_tau[k]
-            tc = tl - tau            
-            fcon_rm = interp_cont_rm(tc, spl, xcont_recon, ycont_rm)
+    for i in range(nl):
+        tc_vals = line2d_recon_time[i] - psi_tau
 
-            for i in range(nv):
-                line2D_recon[j,i] += psi2D[k,i] * fcon_rm
-
-
-    line2D_recon *= dt
+        fcon_rm_vals = np.full( len(tc_vals), np.nan )
+        fcon_rm_vals[ tc_vals < 0. ] = ycont_rm[0]
+        fcon_rm_vals[ tc_vals > xcont_recon[-1] ] = ycont_rm[-1]
+        
+        good_mask = ( (tc_vals >= 0.) & (tc_vals <= xcont_recon[-1]) )
+        fcon_rm_vals[good_mask] = np.interp(tc_vals[good_mask], xcont_recon, ycont_rm)
+            
+        for j in range(nv):            
+            line2D_recon[i,j] = np.sum( np.multiply(psi2D[:,j], fcon_rm_vals) ) * dt
     
     
-    #Smooth line profile
-    # line2D_recon_smooth = line_gaussian_smooth_2d(psi_v, xline_recon, line2D_recon, 
-    #                                               model_params,
-    #                                               flag_inst_res, inst_res, inst_res_err,
-    #                                               nblrmodel, nnlr)
-    
-    line2D_recon_smooth = line2D_recon.copy()
-    
-    return line2D_recon_smooth
+    return line2D_recon

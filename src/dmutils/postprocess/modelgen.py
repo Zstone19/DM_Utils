@@ -1,10 +1,11 @@
 import numpy as np
+from scipy.signal import fftconvolve
+
 import sys
 from numba import njit, prange
 
-from .modelmath import (calculate_cont_from_model, 
-                        calculate_cont_rm, calculate_line2d_from_model)
-
+from dmutils.input import read_input_file
+from .modelmath import calculate_line2d_from_model, line_gaussian_smooth_2d
 
 def get_rset_tset(xline, xcon, r_input, t_input):
     rmin_set = 0
@@ -77,9 +78,22 @@ class DM_Data:
         self.r_input = float(paramfile_inputs['rcloudmax'])
         self.t_input = float(paramfile_inputs['timeback'])
         
+        
+        
+        tin, wlin, line2d_in, line2d_err_in = read_input_file(paramfile_inputs['filedir'] + '/' + paramfile_inputs['line2dfile'])
+        self.xline = tin
+        self.wl_vals = wlin[0]/(1+self.z)
+        self.vel_line = self.C_UNIT*( self.wl_vals - self.central_wl )/self.central_wl
+        self.vel_line_out = self.vel_line * self.VEL_UNIT #km/s
+        
+        self.line2D = line2d_in
+        self.line2D_err = line2d_err_in
+        self.line2D_out = self.line2D.copy()
+        self.line2D_err_out = self.line2D_err.copy()
+        
+        
             #In observed-frame
-        self.xcont, self.ycont, self.yerr_cont = bp.data['con_data'].T
-        self.xline = bp.data['line2d_data']['time']
+        self.xcont, self.ycont, self.yerr_cont = np.loadtxt(paramfile_inputs['filedir'] + '/' + paramfile_inputs['continuumfile'], unpack=True)
         self.xcont_out = self.xcont.copy()
         self.xline_out = self.xline.copy()
         
@@ -98,10 +112,6 @@ class DM_Data:
         self.rmin, self.rmax, self.timeback = get_rset_tset(self.xline, self.xcont, self.r_input, self.t_input)
 
         self.ntau = len(bp.results['tau_rec'][0])
-        self.wl_vals = bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
-        self.vel_line = self.C_UNIT*( self.wl_vals - self.central_wl )/self.central_wl
-        self.line2d = bp.data['line2d_data']['profile'][:,:,1]
-        self.line2d_err = bp.data['line2d_data']['profile'][:,:,2] 
         
         ################################
         # Get nparams
@@ -185,30 +195,13 @@ class DM_Data:
         ################################
         # Get line LC
         
-        dv = np.diff(self.vel_line)[0]
+        self.yline = np.trapz( self.line2D, x=self.vel_line, axis=1 )
+        self.yerr_line = np.sqrt(   np.trapz( self.line2D_err**2, x=self.vel_line, axis=1 )   )
+    
+        self.yline_out = np.trapz( self.line2D, x=self.wl_vals*(1+self.z), axis=1 )
+        self.yerr_line_out = np.sqrt( np.trapz( self.line2D_err**2, x=self.wl_vals*(1+self.z), axis=1 ) )
         
-        self.yline = np.zeros(len(self.xline))
-        self.yerr_line = np.zeros(len(self.xline))
-        
-        
-        self.line_err_mean = np.mean(self.line2d_err)
-        for i in range(len(self.xline)):
-            self.yline[i] = self.line2d[i,0]/2.
-            self.yerr_line[i] = self.line2d_err[i,0]*self.line2d_err[i,0]/2. 
-            
-            for j in range(1, len(self.vel_line)):
-                self.yline[i] += self.line2d[i,j]
-                self.yerr_line[i] += self.line2d_err[i,j]*self.line2d_err[i,j]   
-                
-            self.yline[i] += self.line2d[i,-1]/2.
-            self.yerr_line[i] += self.line2d_err[i,-1]*self.line2d_err[i,-1]/2.
-            
-            self.yline[i] *= dv
-            self.yerr_line[i] = np.sqrt(self.yerr_line[i])*dv
-            
-        self.yline_out = self.yline.copy()
-        self.yerr_line_out = self.yerr_line.copy()
-            
+        self.line_err_mean = np.mean(self.line2D_err)            
             
         ################################
         # Rescale light curves
@@ -227,10 +220,10 @@ class DM_Data:
         
         self.yline *= self.line_scale
         self.yerr_line *= self.line_scale
-        self.line2d *= self.line_scale
-        self.line2d_err *= self.line_scale
+        self.line2D *= self.line_scale
+        self.line2D_err *= self.line_scale
         self.line_err_mean *= self.line_scale
-            
+                    
         ################################
         # Extend velocities
         
@@ -245,6 +238,19 @@ class DM_Data:
 
         for i in range(len(self.vel_line)):
             self.vel_line_ext[i+self.nvel_data_incr] = self.vel_line[i]
+            
+        self.vel_line_ext_out = self.vel_line_ext * self.VEL_UNIT
+        
+        
+        ################################
+        # Rescale inst res
+        self.inst_res_out = self.inst_res
+        self.inst_res_err_out = self.inst_res_err
+        
+        self.inst_res /= self.VEL_UNIT
+        self.inst_res_err /= self.VEL_UNIT
+
+
 
 
 ############################################################################################################
@@ -252,14 +258,14 @@ class DM_Data:
 ############################################################################################################
 
 @njit(fastmath=True)
-def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2):
-    return np.arccos( theta_opn_cos1 + (theta_opn_cos2 - theta_opn_cos1) * np.random.random_sample()**(1./gamma) )
+def theta_sample_outer(gamma, theta_opn_cos1, theta_opn_cos2):
+    return np.arccos( theta_opn_cos1 + (theta_opn_cos2 - theta_opn_cos1) * (np.random.random_sample()**gamma) )
 
 @njit(fastmath=True)
-def theta_sample_outer(gamma, theta_opn_cos1, theta_opn_cos2):
+def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2):
     a1 = np.arccos(theta_opn_cos1)
     a2 = np.arccos(theta_opn_cos2)
-    return a2 + (a1-a2)* (  1. - np.random.random_sample()**(1./gamma)  )
+    return a2 + (a1-a2) * (  1. - np.random.random_sample()**(1./gamma)  )
 
 
 
@@ -311,7 +317,7 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
     
     a = 1./beta/beta
     s = mu/a
-    Rs = 3e10*mbh / CM_PER_LD
+    Rs = 3e11*mbh / CM_PER_LD
     Rin = mu*F + Rs
     sigma = (1. - F)*s
 
@@ -394,10 +400,10 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
                 theta_v = np.pi*( np.random.standard_normal()*sigth_circ + .5 )
             else:
                 if f_flow <= .5:
-                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )                  #Inflow
+                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )               #Inflow
                     theta_v = np.pi*( np.random.standard_normal()*sigth_rad + 1. ) + theta_e
                 else:
-                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )                  #Outflow
+                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )               #Outflow
                     theta_v = np.pi*np.random.standard_normal()*sigth_rad + theta_e
                     
         
@@ -461,6 +467,7 @@ def gkern(l=5, sig=1.):
     return kernel / np.sum(kernel)
 
 
+@njit(fastmath=True)
 def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     
     bin_offset = .5
@@ -493,19 +500,30 @@ def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     Anorm += EPS
     psi2d /= Anorm
     
+    return psi_tau, psi_v, psi2d
+
+
+
+
+def generate_tfunc_tot(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
+    
+    psi_tau, _, psi2d = generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS)
     
     ngauss = 30
     alpha = (ngauss-1)/2/2
-    sig_gauss = (len(psi_v) - 1.)/2/alpha
-    kernel = gkern(len(psi_v), sig_gauss)
-    
+    sig_gauss = (ngauss - 1.)/2/alpha
+
+    nkernel = ngauss
+    if nkernel % 2 == 0:
+        nkernel += 1
+    kernel = gkern(nkernel, sig_gauss)
+
     #Smooth
     for j in range(len(psi_v)):
         # psi2d[:,j] = convolve(psi2d[:,j], Gaussian1DKernel(stddev=sig_gauss))
-        psi2d[:,j] = np.convolve(psi2d[:,j], kernel, mode='same') 
-    
-    return psi_tau, psi_v, psi2d
+        psi2d[:,j] = fftconvolve(psi2d[:,j], kernel, mode='same') 
 
+    return psi_tau, psi_v, psi2d
 
 
 
@@ -513,68 +531,20 @@ def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
 ############################################## LIGHT CURVES ################################################
 ############################################################################################################
 
-def get_cont_line2d_recon(model_params, data, ycont_recon, yerr_cont_recon):
+def get_cont_line2d_recon(model_params, data, xcont_rm, ycont_rm,
+                          psi_v, psi_tau, psi2D, line2D_time):
 
-    ################################
-    # Run
-    ycont_rm, line2D_recon = reconstruct_line2d(model_params, data, ycont_recon)    
+    #Reconstruct line spectra
+    line2D_recon = calculate_line2d_from_model(psi_v, psi_tau, psi2D,
+                                         line2D_time, xcont_rm, ycont_rm)    
+    
+    
+    #Smooth line profile
+    dv = np.diff(psi_v)[0]
+    line2D_recon_smooth = line_gaussian_smooth_2d(line2D_recon, model_params, dv,
+                                                  data.flag_inst_res, data.inst_res, data.inst_res_err,
+                                                  data.nblrmodel, data.nnlr)
 
-    ################################
-    # Get line LCs
+    # line2D_recon_smooth = line2D_recon.copy()
     
-    dv = np.diff(data.vel_line_ext)[0]
-    
-    yline_recon = np.zeros(len(data.xline_recon))        
-    for i in range(len(data.xline_recon)):
-        yline_recon[i] = line2D_recon[i,0]/2.
-        
-        for j in range(1, len(data.vel_line_ext)):
-            yline_recon[i] += line2D_recon[i,j]
-            
-        yline_recon[i] += line2D_recon[i,-1]/2.
-        yline_recon[i] *= dv
-        
-    
-    
-    #Put light curve times into observed frame
-    xcont_recon = data.xcont_recon.copy()
-    xline_recon = data.xline_recon.copy()
-    xcont_recon *= (1+data.z)
-    xline_recon *= (1+data.z)
-    
-    #Rescale light curves
-    ycont_recon_out = ycont_recon.copy()
-    yerr_cont_recon_out = yerr_cont_recon.copy()
-    ycont_recon_out /= data.cont_scale
-    yerr_cont_recon_out /= data.cont_scale
-    ycont_rm /= data.cont_scale
-    line2D_recon /= data.line_scale
-    yline_recon /= data.line_scale
-    
-    #Rescale velocities
-    vel_line_ext_out = data.vel_line_ext.copy()
-    vel_line_ext_out *= data.VEL_UNIT
-    
-    return xcont_recon, ycont_recon_out, yerr_cont_recon_out, ycont_rm, xline_recon, yline_recon, vel_line_ext_out, line2D_recon
-    
-
-def reconstruct_line2d(model_params, data, ycont_recon):
-    
-    #Reconstruct continuum
-    ycont_rm = calculate_cont_rm(model_params, data.xcont_recon, ycont_recon, 
-                                 data.pow_xcont, data.xcont_med, 
-                                 data.idx_resp, data.flag_trend_diff, data.ndifftrend)
-    
-    
-    #Get transfer function (at data pts)
-    cloud_weights, cloud_taus, _, _, _, cloud_vels_los = generate_clouds(model_params, data.ncloud, data.rmax, data.rmin, data.vel_per_cloud)
-    psi_tau, _, psi2D = generate_tfunc(cloud_taus, cloud_vels_los, cloud_weights, data.ntau, data.vel_line_ext, data.EPS)
-
-    #Get line2D
-    line2D_recon = calculate_line2d_from_model(model_params, data.vel_line_ext, psi_tau, psi2D,
-                                               data.xline_recon, data.xcont_recon, ycont_rm,
-                                               data.flag_inst_res, data.inst_res, data.inst_res_err,
-                                               data.nblrmodel, data.nnlr)
-    
-    
-    return ycont_rm, line2D_recon
+    return line2D_recon_smooth

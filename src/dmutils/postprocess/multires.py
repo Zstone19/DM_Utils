@@ -29,7 +29,7 @@ def text_format(vals):
 def plot_mult(res_arr, res_names=None, 
               bounds_arr=None, tf_ymax_arr=None, tf_xbounds_arr=None, 
               cloud_cbar_range=None, tf_cbar_range=None,
-              plot_rblr=True,
+              skip_clouds=1, plot_rblr=True,
               output_fname=None, show=False):
     
     assert len(res_arr) > 0
@@ -65,7 +65,7 @@ def plot_mult(res_arr, res_names=None,
         
         for res in res_arr:
             idx, par = res.bp.find_max_prob()
-            plot_arr = res.bp.results['tran2d_rec'][idx].copy()
+            plot_arr = np.median( res.bp.results['tran2d_rec'], axis=0 )
             plot_arr[ plot_arr > 1 ] = 0.
             
             max_t = np.max( plot_arr ) 
@@ -142,7 +142,7 @@ def plot_mult(res_arr, res_names=None,
 
         ax_clouds = res.plot_clouds(colorbar=True, bounds=arrs[0][i], ax=ax_clouds, 
                                     vmin=arrs[2][i][0], vmax=arrs[2][i][1], plot_rblr=plot_rblr,
-                                    show=False)
+                                    skip=skip_clouds, show=False)
         
         ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
                                              vmin=arrs[3][i][0], vmax=arrs[3][i][1],
