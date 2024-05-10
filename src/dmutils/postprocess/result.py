@@ -853,13 +853,13 @@ class Result:
 
 
         #Generate clouds
-        weights, _, coords, _, vels, v = generate_clouds(model_params, self.data.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+        weights, _, coords, _, vels, vels_los = generate_clouds(model_params, self.data.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
         vels *= self.data.VEL_UNIT
-        v *= self.data.VEL_UNIT
+        vels_los *= self.data.VEL_UNIT
            
-        x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
-        vx_vals, vy_vals, vz_vals = vels[:,0,0], vels[:,0,1], vels[:,0,2]
-        
+        # x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
+        # vx_vals, vy_vals, vz_vals = vels[:,0,0], vels[:,0,1], vels[:,0,2]
+        vx_vals = -vels_los[:,0]
         
 
 
@@ -941,7 +941,7 @@ class Result:
         
         
         
-        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=-vy_vals[::skip]/1000, 
+        ax[0].scatter(x_vals[::skip], z_vals[::skip], s=sizes[::skip], c=-vx_vals[::skip]/1000, 
                     marker='o', ec='none', linewidths=.1, alpha=.9, cmap='coolwarm',
                     vmin=min_v/1000, vmax=max_v/1000)
         ax[0].set_ylabel('z [lt-d]', fontsize=20)
@@ -1158,9 +1158,6 @@ class Result:
         xin, yin, yerrin = self.bp.data['con_data'].T
         xout = self.bp.results['con_rec'][0,:,0]
         
-        if inflate_err:
-            yerrin *= np.sqrt(temp)
-        
         yout_lo = np.zeros( len(xout) )
         yout_med = np.zeros( len(xout) )
         yout_hi = np.zeros( len(xout) )
@@ -1219,8 +1216,6 @@ class Result:
         yout_lo *= self.central_wl*self.bp.VelUnit/(c/1e5)
         yout_med *= self.central_wl*self.bp.VelUnit/(c/1e5)
         yout_hi *= self.central_wl*self.bp.VelUnit/(c/1e5)
-        
-        #yout_lo, yout_med, yout_hi = np.percentile(rec_line_lc, [16, 50, 84], axis=0) * self.central_wl*self.bp.VelUnit/(c/1e5)
         
         if inflate_err:
             yerrin *= np.sqrt(temp)
