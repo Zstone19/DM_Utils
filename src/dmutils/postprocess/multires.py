@@ -142,7 +142,7 @@ def plot_mult(res_arr, weights_all=None, res_names=None,
 
         ax_clouds = res.plot_clouds(colorbar=True, bounds=arrs[0][i], ax=ax_clouds, 
                                     vmin=arrs[2][i][0], vmax=arrs[2][i][1], plot_rblr=plot_rblr,
-                                    poterior_weights=weights_all[i], ptype=ptype,
+                                    posterior_weights=weights_all[i], ptype=ptype,
                                     skip=skip_clouds, show=False)
         
         ax_tf = res.transfer_function_2dplot(weights=weights_all[i], ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
