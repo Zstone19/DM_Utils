@@ -857,7 +857,7 @@ class Result:
         vels *= self.data.VEL_UNIT
         vels_los *= self.data.VEL_UNIT
            
-        # x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
+        x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
         # vx_vals, vy_vals, vz_vals = vels[:,0,0], vels[:,0,1], vels[:,0,2]
         vx_vals = -vels_los[:,0]
         
