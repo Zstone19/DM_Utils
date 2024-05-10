@@ -1,4 +1,5 @@
 import os
+from re import X
 import sys
 
 import matplotlib as mpl
@@ -19,6 +20,8 @@ from tqdm import tqdm
 
 from scipy.ndimage import gaussian_filter
 from scipy.interpolate import RegularGridInterpolator
+from scipy.stats import gaussian_kde
+import fastkde
 
 from bbackend import postprocess, bplotlib
 from pypetal.weighting.utils import get_weights, get_bounds
@@ -26,6 +29,186 @@ from pypetal.utils.petalio import err2str
 
 from .modelmath import calculate_cont_from_model_semiseparable, calculate_cont_rm
 from .modelgen import generate_clouds, generate_tfunc_tot, get_cont_line2d_recon, DM_Data
+
+
+
+###############################################################################
+############################# WEIGHTING USING MBH #############################
+###############################################################################
+
+def weighted_percentile(data, weights, perc):
+    """
+    perc : percentile in [0-1]!
+    """
+    ix = np.argsort(data)
+    data = data[ix] # sort data
+    weights = weights[ix] # sort weights
+    cdf = (np.cumsum(weights) - 0.5 * weights) / np.sum(weights) # 'like' a CDF function
+    return np.interp(perc, cdf, data)
+
+
+def get_kde1d(samples, xvals, method='scipy'):    
+    if method == 'scipy':
+        kde = gaussian_kde(samples, bw_method=.5).pdf(xvals)
+    elif method == 'fastkde':
+        iqr = np.percentile(samples, 75) - np.percentile(samples, 25)
+        sig = np.std(samples)
+        h = 0.9*np.min([sig, iqr/1.34])*len(samples)**(-1/5)
+
+        npt = int(sig/h)
+        npt = max(npt, 1)
+        
+        kde = fastkde.pdf_at_points(samples, list_of_points=xvals,
+                                    axis_expansion_factor=1.,
+                                    num_points_per_sigma=npt)
+        
+    kde[kde < 0] = 0
+    kde /= np.sum(kde)
+        
+    return kde
+
+
+def get_kde2d(xsamples, ysamples, xvals, yvals, method='scipy'):
+
+    if method == 'scipy':
+        arr = np.vstack([xsamples, ysamples])
+        kde = gaussian_kde(arr, bw_method=.5).pdf(np.vstack([xvals, yvals]))
+
+    elif method == 'fastkde':
+        iqr = np.percentile(xsamples, 75) - np.percentile(xsamples, 25)
+        sig = np.std(xsamples)
+        h = 0.9*np.min([sig, iqr/1.34])*len(xsamples)**(-1/6)
+        npt_x = int(sig/h)
+        
+        
+        iqr = np.percentile(ysamples, 75) - np.percentile(ysamples, 25)
+        sig = np.std(ysamples)
+        h = 0.9*np.min([sig, iqr/1.34])*len(ysamples)**(-1/6)
+        npt_y = int(sig/h)
+        
+        npt = np.mean([npt_x, npt_y])
+        
+        
+        kde = fastkde.pdf_at_points(xsamples, ysamples, list_of_points=np.vstack([xvals, yvals]).T,
+                                    axis_expansion_factor=1.,
+                                    num_points_per_sigma=npt)
+        
+    kde[kde < 0] = 0
+    kde /= np.sum(kde)
+        
+    return kde
+    
+    
+
+
+def get_joint_posterior(res_arr, ptype='mbh', method='fastkde'):
+    samples_all = []
+    for res in res_arr:
+        
+        if ptype == 'mbh':
+            samps = res.bp.results['sample'][:,8]
+            samples_all.append(samps/np.log(10) + 6)    
+        elif ptype == 'inc':
+            samps = res.bp.results['sample'][:,3]*180/np.pi
+            samples_all.append(samps)
+        elif ptype == 'both':
+            samps1 = res.bp.results['sample'][:,8]/np.log(10) + 6
+            samps2 = res.bp.results['sample'][:,3]*180/np.pi
+            samps = np.vstack([samps1, samps2])
+            samples_all.append(samps) 
+        
+    
+    if ptype != 'both':
+        minval = np.min(np.concatenate(samples_all))
+        maxval = np.max(np.concatenate(samples_all))
+
+        dx = (maxval - minval)*.2
+        xvals_kde = np.linspace(minval-dx, maxval+dx, 1000)    
+        
+        kde_all = []
+        for i in range(len(res_arr)):
+            kde_i = get_kde1d(samples_all[i], xvals_kde, method=method)
+            kde_all.append( kde_i ) 
+
+
+
+        kde_tot = np.ones(len(xvals_kde), dtype=float)
+        for i in range(len(res_arr)):
+            kde_tot *= kde_all[i]    
+            
+        kde_tot /= np.sum(kde_tot)        
+        return xvals_kde, kde_tot, kde_all
+    
+    else:
+        
+        xvals_kde = np.concatenate([ x[0] for x in samples_all ])
+        yvals_kde = np.concatenate([ x[1] for x in samples_all ])
+        
+        kde_all = []
+        for i in range(len(res_arr)):
+            kde_i = get_kde2d(samples_all[i][0], samples_all[i][1], xvals_kde, yvals_kde, method=method)
+            kde_all.append( kde_i ) 
+
+        kde_tot = np.ones_like(xvals_kde, dtype=float)
+        for i in range(len(res_arr)):
+            kde_tot *= kde_all[i]
+
+        kde_tot /= np.sum(kde_tot)
+        return xvals_kde, yvals_kde, kde_tot, kde_all
+
+
+
+
+def get_weights_all(res_arr, ptype='mbh', method='fastkde'):
+
+    if ptype != 'both':
+        xvals_kde, kde, kde_all = get_joint_posterior(res_arr, ptype, method)
+
+        weights_all = []
+        for i in range(len(res_arr)):
+            
+            if ptype == 'mbh':
+                samps_i = res_arr[i].bp.results['sample'][:,8]/np.log(10) + 6
+            elif ptype == 'inc':
+                samps_i = res_arr[i].bp.results['sample'][:,3]*180/np.pi
+    
+            kde_totval_atdata = np.interp(samps_i, xvals_kde, kde)
+            kde_ival_atdata = np.interp(samps_i, xvals_kde, kde_all[i])
+            
+            weights_i = kde_totval_atdata/kde_ival_atdata
+            weights_i /= np.sum(weights_i)
+            
+            weights_all.append( weights_i )
+            
+    else:
+        xvals_kde, yvals_kde, kde, kde_all = get_joint_posterior(res_arr, ptype, method)
+        
+        nsamps = []
+        for i in range(len(res_arr)):
+            nsamps.append( len(res_arr[i].bp.results['sample']) )
+        
+        weights_all = []
+        for i in range(len(res_arr)):   
+            ind1 = int(  np.sum(nsamps[:i])  )
+            ind2 = ind1 + nsamps[i]
+                     
+            samps1_i = res_arr[i].bp.results['sample'][:,8]/np.log(10) + 6
+            samps2_i = res_arr[i].bp.results['sample'][:,3]*180/np.pi   
+
+            assert np.all( np.isclose( samps1_i, xvals_kde[ind1:ind2] ) )
+            assert np.all( np.isclose( samps2_i, yvals_kde[ind1:ind2] ) )
+
+            kde_totval_atdata = kde[ind1:ind2]
+            kde_ival_atdata = kde_all[i][ind1:ind2]
+                                    
+            weights_i = kde_totval_atdata/kde_ival_atdata
+            weights_i /= np.sum(weights_i)
+            
+            weights_all.append( weights_i )
+            
+        
+    return weights_all
+
 
 ###############################################################################
 ############################### CLASS DEFINITION ##############################
@@ -301,8 +484,35 @@ class Result:
 
 
     def line2d_plot(self, gaussian_smooth=False, gaussian_sig=[0,0], xbounds=None,
-                    include_res=True,
+                    include_res=True, weights=None,
                     ax=None, output_fname=None, show=False):
+        
+        
+        """Create a plot of the 2D line profile, with the data, model, and residuals.
+        
+        Parameters:
+            gaussian_smooth : bool, optional
+                If True, the line profile will be smoothed with a gaussian kernel. The default is False.
+            
+            gaussian_sig : list, optional
+                The sigma of the gaussian kernel in the time and velocity directions (in s and 1e3 km/s). The default is [0,0].
+                
+            xbounds : list, optional
+                The bounds of each plot in the x direction. The default is None, which will be chosen automatically.
+                
+            include_res : bool, optional
+                If True, the residuals will be included in the plot. The default is True.
+                
+            ax : list, optional
+                A list of axes to plot on. If None, a new figure will be created. The default is None.
+                
+            output_fname : str, optional
+                The name of the file to save the plot to. If None, the plot will not be saved. The default is None.
+                
+            show : bool, optional
+                If True, the plot will be shown. The default is False.
+         
+        """
 
 
         if ax is None:
@@ -313,8 +523,12 @@ class Result:
         c = const.c.cgs.value
         ff = 1.5
         
-        idx, _ = self.bp.find_max_prob()
-        model_flux = np.median( self.bp.results['line2d_rec'], axis=0 )
+        if weights is None:
+            weights = np.ones( len(self.bp.results['sample_info']) )
+            weights /= np.sum(weights)
+        
+        idx = np.argmax( self.bp.results['sample_info'] * weights )        
+        model_flux = self.bp.results['line2d_rec'][idx]
         data_flux = self.bp.data['line2d_data']['profile'][:,:,1]
         
         vmin = np.min([np.min(model_flux), np.min(data_flux)])
@@ -470,13 +684,18 @@ class Result:
 
 
     def transfer_function_2dplot(self, ymax=None, xbounds=None, 
-                                 vmin=None, vmax=None,
+                                 vmin=None, vmax=None, weights=None,
                                  ax=None, output_fname=None, show=False):
         
         if ax is None:
             ax_in = False
         else:
             ax_in = True
+            
+
+        if weights is None:
+            weights = np.ones( len(self.bp.results['sample_info']) )
+            weights /= np.sum(weights)
 
         
         c = const.c.cgs.value
@@ -484,12 +703,11 @@ class Result:
         Msol = const.M_sun.cgs.value
         
         #Get data
-        idx, _ = self.bp.find_max_prob()
+        idx = np.argmax( self.bp.results['sample_info'] * weights ) 
         # bh_idx = self.bp.locate_bhmass()
         bh_idx = 8
-        model_params = np.median(self.bp.results['sample'], axis=0)
 
-        mbh = 10**( model_params[bh_idx]/np.log(10) + 6) * Msol
+        mbh = 10**( self.bp.results['sample'][idx,bh_idx]/np.log(10) + 6) * Msol
 
         wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
         t_vals = self.bp.results['tau_rec'][idx]
@@ -501,8 +719,9 @@ class Result:
         
         
         
-        plot_arr = np.median(self.bp.results['tran2d_rec'], axis=0)
-        plot_arr[ plot_arr > 1 ] = 0.
+        # plot_arr = np.median(self.bp.results['tran2d_rec'], axis=0)
+        plot_arr = self.bp.results['tran2d_rec'][idx]
+        # plot_arr[ plot_arr > 1 ] = 0.
 
 
         if ax is None:
@@ -890,12 +1109,16 @@ class Result:
         
         
 
-    def lc_fits_plot(self, inflate_err=False, ax=None, output_fname=None, show=False):
+    def lc_fits_plot(self, inflate_err=False, weights=None, ax=None, output_fname=None, show=False):
         
         if ax is None:
             ax_in = False
         else:
             ax_in = True
+            
+        if weights is None:
+            weights = np.ones(len(self.bp.results['sample_info']))
+            weights /= np.sum(weights)
         
         c = const.c.cgs.value
         ff = 2
@@ -912,10 +1135,20 @@ class Result:
         
         xin, yin, yerrin = self.bp.data['con_data'].T
         xout = self.bp.results['con_rec'][0,:,0]
-        yout_lo, yout_med, yout_hi = np.percentile(self.bp.results['con_rec'][:,:,1], [16, 50, 84], axis=0)
+        
+        yout_lo = np.zeros( len(xout) )
+        yout_med = np.zeros( len(xout) )
+        yout_hi = np.zeros( len(xout) )
+        for i in range(len(xout)):
+            yout_lo[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .16)
+            yout_med[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .5)
+            yout_hi[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .84)
+            
+        # yout_lo, yout_med, yout_hi = np.percentile(self.bp.results['con_rec'][:,:,1], [16, 50, 84], axis=0)
         
         con_mean_err = np.mean(yerrin)
-        syserr_con = (np.exp(np.median(self.bp.results['sample'][:, con_err_idx])) - 1.0) * con_mean_err
+        med_param = weighted_percentile(self.bp.results['sample'][:, con_err_idx], weights, .5)
+        syserr_con = (np.exp(med_param) - 1.0) * con_mean_err
         
         lines, caps, bars = ax[0].errorbar(xin, yin, np.sqrt(yerrin**2 + syserr_con**2), fmt='.k', ms=1.5)
         [bar.set_alpha(.3) for bar in bars]
@@ -942,7 +1175,8 @@ class Result:
         line_lc_err = np.sqrt( np.sum(prof_err**2, axis=1) )*dV
         
         line_mean_err = np.mean(line_lc_err)
-        syserr_line = (np.exp(np.median(self.bp.results['sample'][:, line_err_idx])) - 1.0) * line_mean_err
+        med_param = weighted_percentile(self.bp.results['sample'][:, line_err_idx], weights, .5)
+        syserr_line = (np.exp(med_param) - 1.0) * line_mean_err
         
         
         
@@ -951,7 +1185,19 @@ class Result:
         yerrin = np.sqrt(line_lc_err**2 + (syserr_line**2)*(dV**2))
         
         rec_line_lc = np.sum(self.bp.results['line2d_rec'], axis=2)*dV
-        yout_lo, yout_med, yout_hi = np.percentile(rec_line_lc, [16, 50, 84], axis=0) * self.central_wl*self.bp.VelUnit/(c/1e5)
+        yout_lo = np.zeros( len(xin) )
+        yout_med = np.zeros( len(xin) )
+        yout_hi = np.zeros( len(xin) )
+        for i in range(len(xin)):
+            yout_lo[i] = weighted_percentile(rec_line_lc[:,i], weights, .16)
+            yout_med[i] = weighted_percentile(rec_line_lc[:,i], weights, .5)
+            yout_hi[i] = weighted_percentile(rec_line_lc[:,i], weights, .84)
+        
+        yout_lo *= self.central_wl*self.bp.VelUnit/(c/1e5)
+        yout_med *= self.central_wl*self.bp.VelUnit/(c/1e5)
+        yout_hi *= self.central_wl*self.bp.VelUnit/(c/1e5)
+        
+        #yout_lo, yout_med, yout_hi = np.percentile(rec_line_lc, [16, 50, 84], axis=0) * self.central_wl*self.bp.VelUnit/(c/1e5)
         
         if inflate_err:
             yerrin_mask = (yerrin < .05*yout_med)
@@ -1073,10 +1319,14 @@ class Result:
         
 ############################################################################################################## 
         
-    def plot_lag_posterior(self, weight=True, k=2, width=15,
+    def plot_lag_posterior(self, weight=True, k=2, width=15, posterior_weights=None,
                            ax=None, output_fname=None, show=False):
         
         c = const.c.cgs.value
+        
+        if posterior_weights is None:
+            posterior_weights = np.ones( len(self.bp.results['sample_info']) )
+            posterior_weights /= np.sum(posterior_weights)
         
         if ax is None:
             if weight:
@@ -1120,11 +1370,15 @@ class Result:
         
         
             min_bound, peak, max_bound, smooth_dist, smooth_weight_dist = get_bounds(lag_posterior, wtau, lags, width=width, rel_height=.99)
-            downsampled_posterior = lag_posterior[(lag_posterior > min_bound) & (lag_posterior < max_bound)]
+            
+            mask = (lag_posterior > min_bound) & (lag_posterior < max_bound)
+            downsampled_posterior = lag_posterior[mask]
+            downsampled_posterior_weights = posterior_weights[mask]
+            downsampled_posterior_weights /= np.sum(downsampled_posterior_weights)
 
-            med_lag = np.median(downsampled_posterior)
-            lag_err_lo = med_lag - np.percentile( downsampled_posterior, 16 )
-            lag_err_hi = np.percentile( downsampled_posterior, 84 ) - med_lag
+            med_lag = weighted_percentile(downsampled_posterior, downsampled_posterior_weights, .5)
+            lag_err_lo = med_lag - weighted_percentile( downsampled_posterior, downsampled_posterior_weights, .16 )
+            lag_err_hi = weighted_percentile( downsampled_posterior, downsampled_posterior_weights, .84 ) - med_lag
             
             _, ax = plot_weight_output(lags, lag_posterior, 
                        lag_err_lo, lag_err_hi, med_lag, 
@@ -1132,11 +1386,13 @@ class Result:
                        wtau, smooth_dist, acf, 
                        ax_tot=ax, show=False)
             
-        else:            
+        else:  
+            med_lag = weighted_percentile(lag_posterior, posterior_weights, .5)
+                      
             ax.hist(lag_posterior, bins=25)
-            ax.axvline(np.median(lag_posterior), color='r', ls='--')
+            ax.axvline(med_lag, color='r', ls='--')
             
-            lag_text = r'$\tau = ' + '{:.3f}'.format(np.median(lag_posterior)) + r' $'
+            lag_text = r'$\tau = ' + '{:.3f}'.format(med_lag) + r' $'
             ax.text( .05, .95, lag_text, transform=ax.transAxes, fontsize=15, va='top', ha='left')
             ax.set_xlabel(r'$\tau$ [d]', fontsize=15)
             
@@ -1177,11 +1433,12 @@ class Result:
 
 
     def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
-                 include_res=True,
+                 include_res=True, weights=None,
                  output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
         """
+        
         
         fig = plt.figure(figsize=(12, 7))
         gs_tot = gridspec.GridSpec(2, 12, figure=fig, hspace=.5, height_ratios=[1,1.1])
@@ -1203,7 +1460,7 @@ class Result:
             ax_top = [ax1, ax2]
         
         
-        ax_top = self.line2d_plot(xbounds=line_xbounds, ax=ax_top, show=False)
+        ax_top = self.line2d_plot(weights=weights, xbounds=line_xbounds, ax=ax_top, show=False)
         
             #Set line2d labels
         prof_titles = ['Data', 'Model', 'Residuals']
@@ -1221,7 +1478,7 @@ class Result:
         
         #BOTTOM LEFT: Transfer Function
         ax_bl = fig.add_subplot(gs_bot[0])
-        ax_bl = self.transfer_function_2dplot(ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
+        ax_bl = self.transfer_function_2dplot(weights=weights, ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
         
             #Set tf labels
         ax_bl.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
@@ -1236,7 +1493,7 @@ class Result:
         ax2 = fig.add_subplot(gs_br[1], sharex=ax1)
         ax_br = [ax1, ax2]
         
-        ax_br = self.lc_fits_plot(ax=ax_br, show=False)
+        ax_br = self.lc_fits_plot(weights=weights, ax=ax_br, show=False)
         
         
             #Set lc labels
@@ -1261,7 +1518,9 @@ class Result:
     
     
     
-    def summary2(self, bounds=[-50, 50], skip_clouds=10, plot_rblr=True, weight=True, output_fname=None, show=False):
+    def summary2(self, bounds=[-50, 50], skip_clouds=10, plot_rblr=True, 
+                 posterior_weights=None,
+                 weight=True, output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
         gs_tot = gridspec.GridSpec(2, 4, figure=fig, wspace=.1)
@@ -1295,9 +1554,10 @@ class Result:
             #MBH
         mbh_samples = self.bp.results['sample'][:,8]/np.log(10) + 6        
         ax1.hist(mbh_samples, bins=25)
-        ax1.axvline(np.median(mbh_samples), color='r', ls='--')
+        med_mbh = weighted_percentile(mbh_samples, posterior_weights, .5)
+        ax1.axvline(med_mbh, color='r', ls='--')
         
-        mbh_text = val2latex(mbh_samples)
+        mbh_text = val2latex_weighted(mbh_samples, posterior_weights)
         ax1.text( .05, .95, mbh_text, transform=ax1.transAxes, fontsize=15, va='top', ha='left')
         ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
@@ -1313,7 +1573,7 @@ class Result:
             ax2 = fig.add_subplot(gs_br[:, 1])
 
         
-        self.plot_lag_posterior(weight=weight, k=2, width=15,
+        self.plot_lag_posterior(posterior_weights=posterior_weights, weight=weight, k=2, width=15,
                                 ax=ax2, show=False)
 
 
@@ -1371,7 +1631,12 @@ class Result:
     
 
 
-    def make_latex_param_table(self, output_fname=sys.stdout):
+    def make_latex_param_table(self, weights=None, output_fname=sys.stdout):
+
+        if weights is None:
+            weights = np.ones( len(self.bp.results['sample_info']) )
+            weights /= np.sum(weights)
+
 
         cutoff_ind = len(self.bp.para_names['name'])
         while self.bp.para_names['name'][cutoff_ind-1] == 'time series':
@@ -1411,14 +1676,14 @@ class Result:
         values = []
         for i in range(len(names)):
             if i in [0, 11, 12, 13, 14, 16, 20, 21]:
-                values.append(val2latex(  self.bp.results['sample'][:,i]/np.log(10)  ))
+                values.append(val2latex_weighted(  self.bp.results['sample'][:,i]/np.log(10), weights  ))
             elif i == 8:
                 mbh_samps = self.bp.results['sample'][:,i]/np.log(10) + 6
-                values.append(val2latex( mbh_samps ))
+                values.append(val2latex_weighted( mbh_samps, weights ))
             elif i == 3:
-                values.append(val2latex(self.bp.results['sample'][:,i]*180/np.pi ))
+                values.append(val2latex_weighted(self.bp.results['sample'][:,i]*180/np.pi, weights ))
             else:
-                values.append(val2latex(self.bp.results['sample'][:,i]))
+                values.append(val2latex_weighted(self.bp.results['sample'][:,i], weights))
 
         
         dat = Table([latex_names, units, values, param_names_better, param_limits], names=['Parameter', 'Unit', 'Value', 'Description', 'Bounds'])
@@ -1444,6 +1709,23 @@ def val2latex(vals, n=2):
     val = np.median(vals)
     val_hi = np.percentile(vals, 84)
     val_lo = np.percentile(vals, 16)
+    
+    err_hi = val_hi - val
+    err_lo = val - val_lo
+    
+    if n == 0:
+        return r'${0:.0f}^{{+{1:.0f}}}_{{-{2:.0f}}}$'.format(val, err_hi, err_lo)
+    if n == 1:
+        return r'${0:.1f}^{{+{1:.1f}}}_{{-{2:.1f}}}$'.format(val, err_hi, err_lo)        
+    if n == 2:
+        return r'${0:.2f}^{{+{1:.2f}}}_{{-{2:.2f}}}$'.format(val, err_hi, err_lo)
+    
+
+    
+def val2latex_weighted(vals, weights, n=2):
+    val = weighted_percentile(vals, weights, .5)
+    val_hi = weighted_percentile(vals, weights, .84)
+    val_lo = weighted_percentile(vals, weights, .16)
     
     err_hi = val_hi - val
     err_lo = val - val_lo

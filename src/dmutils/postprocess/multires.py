@@ -7,7 +7,7 @@ from matplotlib import gridspec
 from astropy.table import Table
 from astropy.io import ascii
 import astropy.constants as const
-from dmutils.postprocess.result import val2latex
+from dmutils.postprocess.result import weighted_percentile, val2latex, val2latex_weighted
 
 
 def isnone(arr):    
@@ -21,12 +21,12 @@ def isnone(arr):
         return (arr is None)
     
     
-def text_format(vals):
-    return '{:.2f}'.format(np.median(vals))
+def text_format(vals, weights):
+    return '{:.2f}'.format(weighted_percentile(vals, weights))
     
 
 
-def plot_mult(res_arr, res_names=None, 
+def plot_mult(res_arr, weights_all=None, res_names=None, 
               bounds_arr=None, tf_ymax_arr=None, tf_xbounds_arr=None, 
               cloud_cbar_range=None, tf_cbar_range=None,
               skip_clouds=1, plot_rblr=True,
@@ -34,7 +34,6 @@ def plot_mult(res_arr, res_names=None,
     
     assert len(res_arr) > 0
     nres = len(res_arr)
-
 
     if cloud_cbar_range == 'share':
         max_vel = -np.inf
@@ -80,7 +79,8 @@ def plot_mult(res_arr, res_names=None,
         tf_cbar_range = [min_tf, max_tf]
 
 
-    
+    if weights_all is None:
+        weights_all = [None]*nres
     if res_names is None:
         res_names = [None]*nres
     if bounds_arr is None:
@@ -144,7 +144,7 @@ def plot_mult(res_arr, res_names=None,
                                     vmin=arrs[2][i][0], vmax=arrs[2][i][1], plot_rblr=plot_rblr,
                                     skip=skip_clouds, show=False)
         
-        ax_tf = res.transfer_function_2dplot(ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
+        ax_tf = res.transfer_function_2dplot(weights=weights_all[i], ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
                                              vmin=arrs[3][i][0], vmax=arrs[3][i][1],
                                              show=False)
         
@@ -186,13 +186,15 @@ def plot_mult(res_arr, res_names=None,
 
 
 
-def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=False,
+def plot_mult_fitres(res_arr, weights_all=None, res_names=None, include_res=False, inflate_err=False,
                      xbounds_arr=None, output_fname=None, show=False):
     
     
     assert len(res_arr) > 0
     nres = len(res_arr)
     
+    if weights_all is None:
+        weights_all = [None]*nres
     if res_names is None:
         res_names = [None]*nres
     if xbounds_arr is None:
@@ -248,8 +250,8 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=Fal
             ax_lc = [ax1, ax2]
         
         
-        ax_2d = res.line2d_plot(include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
-        ax_lc = res.lc_fits_plot(inflate_err=inflate_err, ax=ax_lc, show=False)
+        ax_2d = res.line2d_plot(weights=weights_all[i], include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
+        ax_lc = res.lc_fits_plot(weights=weights_all[i], inflate_err=inflate_err, ax=ax_lc, show=False)
         
 
         #Set labels on the line2d plots
@@ -289,10 +291,10 @@ def plot_mult_fitres(res_arr, res_names=None, include_res=False, inflate_err=Fal
 
 
 
-def latex_table_mult(res_arr, print_err=True, res_names=None, output_fname=sys.stdout):
+def latex_table_mult(res_arr, weights_all=None, print_err=True, res_names=None, output_fname=sys.stdout):
 
     if print_err:
-        format_func = val2latex
+        format_func = val2latex_weighted
     else:
         format_func = text_format
 
@@ -306,13 +308,13 @@ def latex_table_mult(res_arr, print_err=True, res_names=None, output_fname=sys.s
        'BLR model Inc', 'BLR model Opn', 'BLR model Kappa',
        'BLR model gamma', 'BLR model xi', 'BLR model ln(Mbh)',
        'BLR model fellip', 'BLR model fflow', 'BLR model ln(sigr_circ)',
-       'BLR model ln(sigthe_circ', 'BLR model ln(sigr_rad)',
+       'BLR model ln(sigthe_circ)', 'BLR model ln(sigr_rad)',
        'BLR model ln(sigthe_rad)', 'BLR model theta_rot',
        'BLR model ln(sig_turb)', 'line broaden', 'sys_err_line',
        'sys_err_con', 'sigmad', 'taud', 'trend', 'A', 'Ag'])
 
     logparam_names = np.array(['BLR model ln(Rblr)', 'BLR model ln(sigr_circ)',
-                     'BLR model ln(sigthe_circ', 'BLR model ln(sigr_rad)',
+                     'BLR model ln(sigthe_circ)', 'BLR model ln(sigr_rad)',
                      'BLR model ln(sigthe_rad)', 'BLR model ln(sig_turb)', 'sigmad', 'taud'])
 
     latex_names = [r'$\log_{10}(R_{BLR})$', r'$\beta$', r'$F$', r'$i$', r'$\theta_{opn}$',
@@ -330,6 +332,13 @@ def latex_table_mult(res_arr, print_err=True, res_names=None, output_fname=sys.s
 
 
     for i, res in enumerate(res_arr):
+        if weights_all is None:
+            weights = np.ones( len(res_arr[i].bp.results['sample_info']) )
+            weights /= np.sum(weights)
+        else:
+            weights = weights_all[i]
+        
+        
         prof_err = res.bp.data['line2d_data']['profile'][:,:,2]
         
         c = const.c.cgs.value
@@ -351,20 +360,23 @@ def latex_table_mult(res_arr, print_err=True, res_names=None, output_fname=sys.s
                 name_ind = np.argwhere( names_tot == name )[0][0]
                 
                 if name in logparam_names:
-                    values[i, name_ind] = format_func(  res.bp.results['sample'][:,j]/np.log(10)  )
+                    values[i, name_ind] = format_func(  res.bp.results['sample'][:,j]/np.log(10), weights  )
                 elif name == 'BLR model ln(Mbh)':
                     mbh_samps = res.bp.results['sample'][:,j]/np.log(10) + 6
-                    values[i, name_ind] = format_func( mbh_samps )
+                    values[i, name_ind] = format_func( mbh_samps, weights )
                 elif name == 'BLR model Inc':
-                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j]*180/np.pi )
+                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j]*180/np.pi, weights )
                 elif name == 'sys_err_line':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(line_lc_err) )
+                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(line_lc_err), weights )
                 elif name == 'sys_err_con':
                     vals = res.bp.results['sample'][:,j]
-                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(yerr_cont) )
+                    values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(yerr_cont), weights )
+                elif name == 'line broaden':
+                    vals = res.bp.results['sample'][:,j]*50. + 220.
+                    values[i, name_ind] = format_func(vals, weights)
                 else:
-                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j])
+                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j], weights)
 
     colnames = np.hstack([ ['Parameter', 'Unit'], res_names ])
     table_input = np.vstack([latex_names, units, values]).T

@@ -1,6 +1,6 @@
 from .binlc import *
 from .lags import *
-from .result import Result
+from .result import Result, get_weights_all
 from .modelgen import *
 from .modelmath import *
 from .multires import *

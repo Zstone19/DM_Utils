@@ -1,13 +1,18 @@
 import numpy as np
 import astropy.constants as const
+from scipy.stats import binned_statistic
 
 from pypetal.weighting.utils import get_weights, get_bounds
+from dmutils.input import read_input_file
+from dmutils.postprocess.result import weighted_percentile
 
 import matplotlib.pyplot as plt
 
+
 ##############################################################################################################
 ##############################################################################################################
-#Utility functions
+#Base functions
+
 
 def get_rms_spectrum(res):
     
@@ -20,11 +25,187 @@ def get_rms_spectrum(res):
         
     rms_prof = np.sqrt(rms_prof/flux.shape[0])
 
-    return rms_prof   
+    return rms_prof  
 
 
 
-def get_lag_dists(res, wl_bins):
+def get_mean_spec(time, wl, flux, nwl=None, const=0, tbounds=[0, np.inf]):
+    wlmin = []
+    wlmax = []
+    flux_tot = []
+
+
+    allsame = []
+    for i in range(len(time)):
+        allsame.append(np.allclose(wl[i], wl[0]))
+
+
+    if np.all(allsame) & (nwl is None):
+        wlmin = wl[0].min()
+        wlmax = wl[0].max()
+        wl_centers = wl[0].copy()
+
+        good_ind = np.argwhere( (time > tbounds[0]) & (time < tbounds[1]) ).flatten()        
+        binned_spec = flux[good_ind] + const
+        
+        nepoch = len(binned_spec)
+
+
+
+    else:
+        for i in range(len(time)):
+            if (time[i] < tbounds[0]) or (time[i] > tbounds[1]):
+                continue
+                    
+            wlmin.append(wl[i].min())
+            wlmax.append(wl[i].max())
+            flux_tot.append(flux[i] + const)
+            
+
+        nepoch = len(flux_tot)
+        wlmin = np.max(wlmin)
+        wlmax = np.min(wlmax)        
+
+        
+        binned_wl = np.linspace(wlmin, wlmax, nwl+1)
+        wl_centers = []
+        for i in range(len(binned_wl)-1):
+            wl_centers.append((binned_wl[i]+binned_wl[i+1])/2)
+
+        binned_spec = np.zeros((nepoch, len(binned_wl)-1))
+        for i in range(nepoch):
+            binned_spec[i] = binned_statistic(wl[i], flux_tot[i], bins=binned_wl, statistic=np.nanmedian)[0]
+    
+        
+    
+    mean_spec = np.nanmedian(binned_spec, axis=0)
+    rms_spec = np.zeros_like(mean_spec)
+    for i in range(nepoch):
+        for j in range(len(mean_spec)):
+            
+            if not np.isnan(binned_spec[i][j]):
+                rms_spec[j] += (binned_spec[i][j] - mean_spec[j])**2
+            
+    rms_spec = np.sqrt(rms_spec/nepoch)
+    mean_spec -= const
+    
+    return np.array(wl_centers), mean_spec, rms_spec
+
+
+
+
+
+def get_bins(res, fbin=None, nbin=None, vstart=-5e3, vend=5e3 ):
+
+    central_wl = res.central_wl
+    wl = res.bp.data['line2d_data']['profile'][0,:,0]/(1+res.z)
+    rms_spec = get_rms_spectrum(res)
+
+    # spec_in = rms_spec.copy()
+    # rms_spec = rms_spec[ rms_spec > 0]
+
+    if nbin is None:
+        fix_fbin = True
+    else:
+        fix_fbin = False
+
+    #v/c = (w-center)/center
+    wlstart = vstart/3e5 * central_wl + central_wl
+    wlend = vend/3e5 * central_wl + central_wl
+
+    if fix_fbin:
+
+        bins = [wlstart]
+        while bins[-1] < wlend:
+            fbin_i = 0
+            wlbin_i = bins[-1]
+            
+            
+            while fbin_i < fbin:
+                wlbin_i += 1
+                mask = (wl > bins[-1]) & (wl < wlbin_i)
+                fbin_i = np.trapz( x=wl[mask], y=rms_spec[mask] )
+
+
+            bins.append(wlbin_i)  
+            
+    else:
+        nbin_out = np.inf
+        df = 1
+
+        fbin = df
+        dw = 1
+        
+        while nbin_out > nbin:
+            bins_left = [central_wl]
+            bins_right = [central_wl]
+            
+
+            #Middle -> left
+            for _ in range(100):
+                fbin_i = 0
+                wlbin_i = bins_left[-1] - dw
+                
+                
+                for i in range( int(   (bins_left[-1] - wlstart)/dw   ) ):                
+                    wlbin_i = bins_left[-1] - (i+1)*dw
+                    
+                    mask = (wl < bins_left[-1]) & (wl > wlbin_i)
+                    fbin_i = np.trapz( x=wl[mask], y=rms_spec[mask] )
+                    if fbin_i > fbin:
+                        break
+
+                if fbin_i > fbin:
+                    bins_left.append(wlbin_i)                 
+                if bins_left[-1] < wlstart:
+                    break
+            
+
+
+
+            #Middle -> right
+            for _ in range(100):
+                fbin_i = 0
+                wlbin_i = bins_right[-1] + dw
+                
+                for i in range( int(   (wlend - bins_right[-1])/dw   ) ):                
+                    wlbin_i = bins_right[-1] + (i+1)*dw
+                    
+                    mask = (wl > bins_right[-1]) & (wl < wlbin_i)
+                    fbin_i = np.trapz( x=wl[mask], y=rms_spec[mask] )
+                    if fbin_i > fbin:
+                        break
+
+                
+                if fbin_i > fbin:
+                    bins_right.append(wlbin_i)    
+                if bins_right[-1] > wlend:
+                    break        
+        
+        
+
+            nbin_out = len(bins_right) + len(bins_left) - 2
+            fbin += df
+
+    bins = np.concatenate([ bins_left[::-1], bins_right[1:] ])
+       
+    return bins
+
+
+
+
+##############################################################################################################
+##############################################################################################################
+#Utility functions 
+
+
+def get_lag_dists(res, wl_bins, weights=None):
+
+    if weights is None:
+        weights = np.ones( len(res.bp.results['sample_info']) )
+        weights /= np.sum(weights)
+
+
     
     c = const.c.cgs.value
 
@@ -44,6 +225,7 @@ def get_lag_dists(res, wl_bins):
     nbins = len(wl_bin_centers)
     lag_post = np.zeros( (nbins, psi2d.shape[0]) )
     downsampled_posterior = []
+    downsampled_weights = []
 
     xc, yc, _ = res.bp.data['con_data'].T
     xl = res.bp.data['line2d_data']['time']
@@ -71,16 +253,45 @@ def get_lag_dists(res, wl_bins):
         
         #Get downsampled dist
         min_bound, _, max_bound, _, _ = get_bounds(lag_post[i], wtau, lags, width=15, rel_height=.99)
-        downsampled_posterior.append( lag_post[i][(lag_post[i] > min_bound) & (lag_post[i] < max_bound)]  )
+        
+        mask = (lag_post[i] > min_bound) & (lag_post[i] < max_bound)
+        downsampled_posterior.append( lag_post[i][mask] )
+        downsampled_weights.append( weights[mask] )
     
-    return downsampled_posterior
+
+    return downsampled_posterior, downsampled_weights
+
+
+
+
+def get_binned_lcs(input_fname, wl_bins, z):
+
+    time, wl, flux, err = read_input_file(input_fname)
+    wl /= 1+z
+    
+    nbin = len(wl_bins) - 1
+
+    x = time.copy()
+    ytot = np.zeros( (nbin, len(x)) )
+    yerrtot = np.zeros( (nbin, len(x)) )
+
+    for i in range(len(x)):        
+        
+        for j in range(nbin):
+            mask = (wl[i] >= wl_bins[j]) & (wl[i] < wl_bins[j+1])
+            
+            ytot[j,i] = np.sum(flux[i][mask])
+            yerrtot[j,i] = np.sqrt( np.sum(err[i][mask]**2) )
+    
+
+    return x, ytot, yerrtot
 
 
 ##############################################################################################################
 ##############################################################################################################
 #Plot
 
-def plot_lag_spectrum(res_arr, wl_bins, line_names=None, labels=None, 
+def plot_lag_spectrum(res_arr, wl_bins, weight_all=None, line_names=None, labels=None, 
                       xlim=None, ylim=None,
                       show=False, output_fname=None):
 
@@ -96,6 +307,8 @@ def plot_lag_spectrum(res_arr, wl_bins, line_names=None, labels=None,
         xlim = [None]*len(res_arr)
     if ylim is None:
         ylim = [None]*len(res_arr)
+    if weight_all is None:
+        weight_all = [None]*len(res_arr)
     
 
     xerr_lo = []
@@ -112,7 +325,7 @@ def plot_lag_spectrum(res_arr, wl_bins, line_names=None, labels=None,
         yerr_lo_i = np.zeros(nbin)
         yerr_hi_i = np.zeros(nbin)
         yvals_i = np.zeros(nbin)
-        downsampled_posterior = get_lag_dists(res_arr[i], wl_bins[i])
+        downsampled_posterior, downsampled_weights = get_lag_dists(res_arr[i], wl_bins[i], weights=weight_all[i])
         
         wl_bin_centers = []
         for j in range(len(wl_bins[i])-1):
@@ -122,9 +335,9 @@ def plot_lag_spectrum(res_arr, wl_bins, line_names=None, labels=None,
             xerr_lo_i[j] = wl_bin_centers[j] - wl_bins[i][j]
             xerr_hi_i[j] = wl_bins[i][j+1] - wl_bin_centers[j]
             
-            yerr_lo_i[j] = np.percentile(downsampled_posterior[j], 16)
-            yerr_hi_i[j] = np.percentile(downsampled_posterior[j], 84)
-            yvals_i[j] = np.median(downsampled_posterior[j])
+            yerr_lo_i[j] = weighted_percentile(downsampled_posterior[j], downsampled_weights[j], .16)
+            yerr_hi_i[j] = weighted_percentile(downsampled_posterior[j], downsampled_weights[j], .84)
+            yvals_i[j] = weighted_percentile(downsampled_posterior[j], downsampled_weights[j], .84)
             
         xerr_lo.append(xerr_lo_i)
         xerr_hi.append(xerr_hi_i)
@@ -139,10 +352,13 @@ def plot_lag_spectrum(res_arr, wl_bins, line_names=None, labels=None,
     lo_vals_tot = np.zeros(len(res_arr))
     hi_vals_tot = np.zeros(len(res_arr))
     for i in range(len(res_arr)):
-        downsampled_posterior_tot = get_lag_dists(res_arr[i], [0, np.inf])[0]
-        med_vals_tot[i] =  np.median(downsampled_posterior_tot)
-        lo_vals_tot[i] =  np.percentile(downsampled_posterior_tot, 16)
-        hi_vals_tot[i] =  np.percentile(downsampled_posterior_tot, 84)
+        downsampled_posterior_tot, downsampled_weights_tot = get_lag_dists(res_arr[i], [0, np.inf], weight_all[i])
+        downsampled_posterior_tot = downsampled_posterior_tot[0]
+        downsampled_weights_tot = downsampled_weights_tot[0]
+
+        med_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .5)
+        lo_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .16)
+        hi_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .84)
             
             
     Nrow = 2
