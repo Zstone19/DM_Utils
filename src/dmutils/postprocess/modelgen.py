@@ -258,14 +258,14 @@ class DM_Data:
 ############################################################################################################
 
 @njit(fastmath=True)
-def theta_sample_outer(gamma, theta_opn_cos1, theta_opn_cos2):
-    return np.arccos( theta_opn_cos1 + (theta_opn_cos2 - theta_opn_cos1) * (np.random.random_sample()**gamma) )
+def theta_sample_outer(gamma, theta_opn_cos1, theta_opn_cos2, size=None):
+    return np.arccos( theta_opn_cos1 + (theta_opn_cos2 - theta_opn_cos1) * (np.random.random_sample(size=size)**gamma) )
 
 @njit(fastmath=True)
-def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2):
+def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2, size=None):
     a1 = np.arccos(theta_opn_cos1)
     a2 = np.arccos(theta_opn_cos2)
-    return a2 + (a1-a2) * (  1. - np.random.random_sample()**(1./gamma)  )
+    return a2 + (a1-a2) * (  1. - np.random.random_sample(size=size)**(1./gamma)  )
 
 
 def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_set, n_v_per_cloud):
