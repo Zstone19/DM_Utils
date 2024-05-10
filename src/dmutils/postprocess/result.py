@@ -853,9 +853,14 @@ class Result:
 
 
         #Generate clouds
-        weights, _, coords, _, vels, _ = generate_clouds(model_params, self.data.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+        weights, _, coords, _, vels, v = generate_clouds(model_params, self.data.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+        vels *= self.data.VEL_UNIT
+        v *= self.data.VEL_UNIT
+           
         x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
         vx_vals, vy_vals, vz_vals = vels[:,0,0], vels[:,0,1], vels[:,0,2]
+        
+        
 
 
 
