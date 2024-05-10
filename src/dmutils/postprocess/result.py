@@ -1202,7 +1202,7 @@ class Result:
         
         xin = self.bp.data['line2d_data']['time']
         yin = line_lc*self.central_wl*self.bp.VelUnit/(c/1e5)
-        yerrin = np.sqrt(line_lc_err**2 + (syserr_line**2)*(dV**2))
+        yerrin = np.sqrt(line_lc_err**2 + (syserr_line**2)*(dV**2))*self.central_wl*self.bp.VelUnit/(c/1e5)
         
         rec_line_lc = np.sum(self.bp.results['line2d_rec'], axis=2)*dV
         yout_lo = np.zeros( len(xin) )
