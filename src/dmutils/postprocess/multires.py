@@ -29,7 +29,7 @@ def text_format(vals, weights):
 def plot_mult(res_arr, weights_all=None, res_names=None, 
               bounds_arr=None, tf_ymax_arr=None, tf_xbounds_arr=None, 
               cloud_cbar_range=None, tf_cbar_range=None,
-              skip_clouds=1, plot_rblr=True,
+              skip_clouds=1, plot_rblr=True, ptype='median',
               output_fname=None, show=False):
     
     assert len(res_arr) > 0
@@ -142,6 +142,7 @@ def plot_mult(res_arr, weights_all=None, res_names=None,
 
         ax_clouds = res.plot_clouds(colorbar=True, bounds=arrs[0][i], ax=ax_clouds, 
                                     vmin=arrs[2][i][0], vmax=arrs[2][i][1], plot_rblr=plot_rblr,
+                                    poterior_weights=weights_all[i], ptype=ptype,
                                     skip=skip_clouds, show=False)
         
         ax_tf = res.transfer_function_2dplot(weights=weights_all[i], ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 

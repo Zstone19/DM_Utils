@@ -774,8 +774,10 @@ class Result:
             return fig, ax
 
 
+
+
     def plot_clouds(self, rotate=False, skip=10, bounds=[-10,10],
-                    plot_rblr=True, 
+                    ptype='median', plot_rblr=True, posterior_weights=None,
                     colorbar=False, vmin=None, vmax=None,
                     ax=None, output_fname=None, show=False):
         
@@ -817,25 +819,48 @@ class Result:
             ax_in = True
             
             
-        fname = self.paramfile_inputs['filedir'] + '/' + self.paramfile_inputs['cloudsfileout']
-        x_vals, y_vals, z_vals, \
-        vx_vals, vy_vals, vz_vals, \
-        weights = np.loadtxt(fname, unpack=True)
+        # fname = self.paramfile_inputs['filedir'] + '/' + self.paramfile_inputs['cloudsfileout']
+        # x_vals, y_vals, z_vals, \
+        # vx_vals, vy_vals, vz_vals, \
+        # weights = np.loadtxt(fname, unpack=True)
         
-        x_vals = x_vals[::self.data.vel_per_cloud]
-        y_vals = y_vals[::self.data.vel_per_cloud]
-        z_vals = z_vals[::self.data.vel_per_cloud]
-        weights = weights[::self.data.vel_per_cloud]
+        # x_vals = x_vals[::self.data.vel_per_cloud]
+        # y_vals = y_vals[::self.data.vel_per_cloud]
+        # z_vals = z_vals[::self.data.vel_per_cloud]
+        # weights = weights[::self.data.vel_per_cloud]
         
-        vx_vals = np.reshape(vx_vals, (len(x_vals), self.data.vel_per_cloud))
-        vy_vals = np.reshape(vy_vals, (len(x_vals), self.data.vel_per_cloud))
-        vz_vals = np.reshape(vz_vals, (len(x_vals), self.data.vel_per_cloud))
+        # vx_vals = np.reshape(vx_vals, (len(x_vals), self.data.vel_per_cloud))
+        # vy_vals = np.reshape(vy_vals, (len(x_vals), self.data.vel_per_cloud))
+        # vz_vals = np.reshape(vz_vals, (len(x_vals), self.data.vel_per_cloud))
         
-        model_params = np.median(self.bp.results['sample'], axis=0)
+        if posterior_weights is None:
+            posterior_weights = np.ones(len(self.bp.results['sample']))
+            posterior_weights /= np.sum(posterior_weights)
+            
+        if ptype == 'median':
+            if np.all(posterior_weights == posterior_weights[0]):        
+                model_params = np.median(self.bp.results['sample'], axis=0)
+            else:
+                model_params = np.zeros( len(self.bp.results['sample'][0]) )
+                for i in range(len(self.bp.results['sample'][0])):
+                    model_params[i] = weighted_percentile(self.bp.results['sample'][:,i], posterior_weights, .5)            
+                
+        elif ptype == 'mean':
+            model_params = np.average(self.bp.results['sample'], axis=0, weights=posterior_weights)
+        elif ptype == 'map':
+            idx = np.argmax(self.bp.results['sample_info'] * posterior_weights)
+            model_params = self.bp.results['sample'][idx]
+
+
+        #Generate clouds
+        weights, _, coords, _, vels, _ = generate_clouds(model_params, self.data.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+        x_vals, y_vals, z_vals = coords[:,0], coords[:,1], coords[:,2]
+        vx_vals, vy_vals, vz_vals = vels[:,0,0], vels[:,0,1], vels[:,0,2]
+
 
 
         inc = np.arccos(model_params[3])
-        rblr = 10**np.median(model_params[0]/np.log(10))
+        rblr = 10**model_params[0]
                 
         x_rblr = np.linspace(bounds[0], bounds[1], 5000)
         y_rblr1 = np.sqrt(rblr**2 - x_rblr**2)
@@ -849,14 +874,6 @@ class Result:
         zline1 = np.linspace(zmin, zmax, 1000)
         xline2 = np.full( 1000, rblr )
         zline2 = zline1.copy()
-        
-        
-        # x_vals, y_vals, z_vals = self.cloud_coords.T
-        # vx_vals = self.cloud_vels[:,:,0]
-        # vy_vals = self.cloud_vels[:,:,1]
-        # vz_vals = self.cloud_vels[:,:,2]
-        # weights = self.cloud_weights
-
         
         
         if rotate:
