@@ -834,7 +834,7 @@ class Result:
         model_params = np.median(self.bp.results['sample'], axis=0)
 
 
-        inc = model_params[3]
+        inc = np.arccos(model_params[3])
         rblr = 10**np.median(model_params[0]/np.log(10))
                 
         x_rblr = np.linspace(bounds[0], bounds[1], 5000)

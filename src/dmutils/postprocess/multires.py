@@ -365,7 +365,7 @@ def latex_table_mult(res_arr, weights_all=None, print_err=True, res_names=None, 
                     mbh_samps = res.bp.results['sample'][:,j]/np.log(10) + 6
                     values[i, name_ind] = format_func( mbh_samps, weights )
                 elif name == 'BLR model Inc':
-                    values[i, name_ind] = format_func(res.bp.results['sample'][:,j]*180/np.pi, weights )
+                    values[i, name_ind] = format_func( np.arccos(res.bp.results['sample'][:,j])*180/np.pi, weights )
                 elif name == 'sys_err_line':
                     vals = res.bp.results['sample'][:,j]
                     values[i, name_ind] = format_func( (np.exp(vals) - 1.0) * np.mean(line_lc_err), weights )

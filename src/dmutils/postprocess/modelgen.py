@@ -268,15 +268,8 @@ def theta_sample_inner(gamma, theta_opn_cos1, theta_opn_cos2):
     return a2 + (a1-a2) * (  1. - np.random.random_sample()**(1./gamma)  )
 
 
-
-
-@njit(fastmath=True)
 def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_set, n_v_per_cloud):
     
-    #Param order:
-    #mbh, mu, beta, F, inc, cos_theta_opn, kappa, gamma, xi, f_ellip, f_flow, sigr_circ, sigth_circ, sigr_rad, sigth_rad, theta_e, sig_turb
-
-
     #Constants
     GRAVITY = 6.672e-8
     SOLAR_MASS = 1.989e33
@@ -286,21 +279,13 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
     C_UNIT = CVAL/1.0e5/VEL_UNIT
 
 
-    #Arrays
-    cloud_weights = np.zeros(n_cloud_per_core)
-    cloud_taus = np.zeros(n_cloud_per_core)
-    cloud_coords = np.zeros((n_cloud_per_core, 3))
-    cloud_pcoords = np.zeros((n_cloud_per_core, 2))
-    cloud_vels = np.zeros((n_cloud_per_core, n_v_per_cloud, 3))
-    cloud_vels_los = np.zeros((n_cloud_per_core, n_v_per_cloud))
-    
-    
-    mu = np.exp(model_params[0])                                
+    #Load parameters
+    mu = np.exp(model_params[0])
     beta = model_params[1]
     F = model_params[2]
     inc = np.arccos(model_params[3])                            #Inc [rad]
     cos_theta_opn = np.cos(model_params[4] * np.pi/180)         #Cos(theta_opn)
-    kappa = model_params[5]                                     
+    kappa = model_params[5]                                   
     gamma = model_params[6]
     xi = model_params[7]
     mbh = np.exp(model_params[8])                               #MBH [1e6 solar masses]
@@ -315,141 +300,142 @@ def generate_clouds(model_params, n_cloud_per_core, rcloud_max_set, rcloud_min_s
     sig_turb = np.exp(model_params[16])
     
     
+    
+
+    Rs = 3.0e11*mbh / CM_PER_LD    
     a = 1./beta/beta
     s = mu/a
-    Rs = 3e11*mbh / CM_PER_LD
     Rin = mu*F + Rs
     sigma = (1. - F)*s
 
     sin_inc_comp = np.cos(inc)
-    cos_inc_comp = np.sin(inc)   
+    cos_inc_comp = np.sin(inc) 
     
-    for j in prange(n_cloud_per_core):
-        coords = np.zeros(3)   #Cartesian
-        pcoords = np.zeros(2)  #Polar
-        Lvec = np.zeros(2)     #Angular momentum vec (polar)
-        vels = np.zeros(3)
-        pvels = np.zeros(2)
+    
+    
+    #Get values beforehand
+    Lphi_vals = 2*np.pi*np.random.random_sample(size=n_cloud_per_core)
+    Ltheta_vals = theta_sample_outer( gamma, cos_theta_opn, 1., size=n_cloud_per_core )    
+    phi_vals = 2*np.pi*np.random.random_sample(size=n_cloud_per_core)
+    
+      
+    rvals = np.zeros(n_cloud_per_core)
+    for j in range(n_cloud_per_core):
 
-        
-        Lvec[0] = 2*np.pi*np.random.random_sample()                     #L_phi
-        Lvec[1] = theta_sample_outer( gamma, cos_theta_opn, 1. )        #L_theta
-        
         nc = 0
-        pcoords[0] = rcloud_max_set + 1.
-        while ( (pcoords[0] > rcloud_max_set) or (pcoords[0] < rcloud_min_set) ):
+        rvals[j] = rcloud_max_set + 1.
+        while ( (rvals[j] > rcloud_max_set) or (rvals[j] < rcloud_min_set) ):
             if nc > 1000:
                 raise Exception('Cloud generation failed')
 
             rnd = np.random.standard_gamma(a)
-            pcoords[0] = Rin + rnd*sigma    #r
+            rvals[j] = Rin + sigma*rnd    #r
             nc += 1
     
     
+    x = rvals * np.cos(phi_vals)
+    y = rvals * np.sin(phi_vals)
+    z = np.zeros(n_cloud_per_core)
     
+    xb =  np.cos(Ltheta_vals)*np.cos(Lphi_vals)*x + np.sin(Lphi_vals)*y
+    yb = -np.cos(Ltheta_vals)*np.sin(Lphi_vals)*x + np.cos(Lphi_vals)*y
+    zb =  np.sin(Ltheta_vals)*x
     
+    zb0 = zb.copy()
+    rnd_xi = np.random.random_sample(size=n_cloud_per_core)
+    zb[ (rnd_xi < 1. - xi) & (zb0 < 0.) ] *= -1
     
-        #############################
-        # Get cloud coords
+    x =  xb*cos_inc_comp + zb*sin_inc_comp
+    y =  yb.copy()
+    z = -xb*sin_inc_comp + zb*cos_inc_comp
     
-        coords_b = np.zeros(3)
-        
-        #Azimuthal positions of clouds
-        pcoords[1] = 2*np.pi*np.random.random_sample()   #phi
-        cloud_pcoords[j] = pcoords
-        
-        #Polar -> Cartesian (in disk)
-        coords[0] = pcoords[0] * np.cos(pcoords[1])   #x_disk
-        coords[1] = pcoords[0] * np.sin(pcoords[1])   #y_disk
-        coords[2] = 0.                                #z_disk
-        
-        #Right-handed framework
-        coords_b[0] = np.cos(Lvec[1])*np.cos(Lvec[0])*coords[0] + np.sin(Lvec[0])*coords[1]
-        coords_b[1] = -np.cos(Lvec[1])*np.sin(Lvec[0])*coords[0] + np.cos(Lvec[0])*coords[1]
-        coords_b[2] = np.sin(Lvec[1])*coords[0]
-
-        zb0 = coords_b[2]
-        rnd_xi = np.random.random_sample()
-        if (rnd_xi < 1. - xi) and (zb0 < 0.):
-            coords_b[2] = -coords_b[2]
-            
-            
-        #Counter-rotate around y-axis (LOS is x-axis)
-        coords[0] = coords_b[0]*cos_inc_comp + coords_b[2]*sin_inc_comp
-        coords[1] = coords_b[1]
-        coords[2] = -coords_b[0]*sin_inc_comp + coords_b[2]*cos_inc_comp
-        
-        weight = .5 + kappa*(coords[0]/pcoords[0])
-        cloud_weights[j] = weight
-        
-        dis = pcoords[0] - coords[0]
-        cloud_taus[j] = dis
-        
-        cloud_coords[j] = coords        
-        
-        #############################
-        # Get cloud vels
-
-        v_kep = np.sqrt(mbh/pcoords[0])
-        
-        for k in prange(n_v_per_cloud):
-            rnd = np.random.random_sample()
-            
-            if rnd < f_ellip:
-                rho_v = v_kep*( np.random.standard_normal()*sigr_circ + 1. )
-                theta_v = np.pi*( np.random.standard_normal()*sigth_circ + .5 )
-            else:
-                if f_flow <= .5:
-                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )               #Inflow
-                    theta_v = np.pi*( np.random.standard_normal()*sigth_rad + 1. ) + theta_e
-                else:
-                    rho_v = v_kep*( np.random.standard_normal()*sigr_rad + 1. )               #Outflow
-                    theta_v = np.pi*np.random.standard_normal()*sigth_rad + theta_e
-                    
-        
-            pvels[0] = np.sqrt(2.)*rho_v*np.cos(theta_v)
-            pvels[1] = rho_v*np.abs(np.sin(theta_v))
-            
-            
-            
-            
-            vels_b = np.zeros(3)
-            
-            vels[0] = pvels[0]*np.cos(pcoords[1]) - pvels[1]*np.sin(coords[1])
-            vels[1] = pvels[0]*np.sin(pcoords[1]) + pvels[1]*np.cos(coords[1])
-            vels[2] = 0.
-            
-            vels_b[0] = np.cos(Lvec[1])*np.cos(Lvec[0])*vels[0] + np.sin(Lvec[0])*vels[1]
-            vels_b[1] = -np.cos(Lvec[1])*np.sin(Lvec[0])*vels[0] + np.cos(Lvec[0])*vels[1]
-            vels_b[2] = np.sin(Lvec[1])*vels[0]
-            
-            if (rnd_xi < 1. - xi) and (zb0 < 0.):
-                vels_b[2] = -vels_b[2]
-                
-            vels[0] = vels_b[0]*cos_inc_comp + vels_b[2]*sin_inc_comp
-            vels[1] = vels_b[1]
-            vels[2] = -vels_b[0]*sin_inc_comp + vels_b[2]*cos_inc_comp
-            cloud_vels[j,k] = vels
-            
-            #Define LOS velocity - positive is receding w.r.t. observer
-            v = -vels[0]
-            
-            #Add turbulent velocity
-            v += np.random.standard_normal()*sig_turb*v_kep
-            
-            #Make velocity stay physical
-            if np.abs(v) >= C_UNIT:
-                v = .9999*C_UNIT * np.sign(v)
-                
-            #Relativistic effects
-            g = np.sqrt( (1. + v/C_UNIT) / (1. - v/C_UNIT) ) / np.sqrt( 1. - Rs/pcoords[0] )
-            v = (g - 1.)*C_UNIT
-            
-            cloud_vels_los[j,k] = v
+    cloud_weights = 0.5 + kappa*(x/rvals)
+    cloud_taus = rvals-x 
 
 
+    ##########
+    #Velocities
     
-    return cloud_weights, cloud_taus, cloud_coords, cloud_pcoords, cloud_vels, cloud_vels_los
+    v_kep = np.sqrt(mbh/rvals)
+
+    rnd = np.random.sample(size=(n_cloud_per_core, n_v_per_cloud))
+    rho_v = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    theta_v = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    vr = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    vphi = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    vx = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    vy = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    vz = np.zeros((n_cloud_per_core, n_v_per_cloud))
+    v = np.zeros((n_cloud_per_core, n_v_per_cloud))
+
+
+    for k in range(n_v_per_cloud):
+        mask = rnd[:,k] < f_ellip
+        nmask = np.sum(mask)
+        nmask2 = len(mask)-nmask
+        
+        rho_v[:,k][ mask ] = ( np.random.standard_normal(size=nmask)*sigr_circ + 1. ) * v_kep[mask]
+        theta_v[:,k][ mask ] = ( np.random.standard_normal(size=nmask)*sigth_circ + .5 )*np.pi
+        
+        if f_flow <= 0.5:
+            rho_v[:,k][ ~mask ] = ( np.random.standard_normal(size=nmask2)*sigr_rad + 1. ) * v_kep[~mask]
+            theta_v[:,k][ ~mask ] = ( np.random.standard_normal(size=nmask2)*sigth_rad + 1. )*np.pi + theta_e
+        else:
+            rho_v[:,k][ ~mask ] = ( np.random.standard_normal(size=nmask2)*sigr_rad + 1. ) * v_kep[~mask]             #Outflow
+            theta_v[:,k][ ~mask ] = (np.random.standard_normal(size=nmask2)*sigth_rad)*np.pi + theta_e
+        
+        
+        vr[:,k] = np.sqrt(2.)*rho_v[:,k]*np.cos(theta_v[:,k])
+        vphi[:,k] = rho_v[:,k]*np.abs(np.sin(theta_v[:,k]))
+        
+        vx[:,k] = vr[:,k]*np.cos(phi_vals) - vphi[:,k]*np.sin(phi_vals)
+        vy[:,k] = vr[:,k]*np.sin(phi_vals) + vphi[:,k]*np.cos(phi_vals)
+        vz[:,k] = 0.
+        
+        vxb =  np.cos(Ltheta_vals)*np.cos(Lphi_vals) * vx[:,k] + np.sin(Lphi_vals) * vy[:,k]
+        vyb = -np.cos(Ltheta_vals)*np.sin(Lphi_vals) * vx[:,k] + np.cos(Lphi_vals) * vy[:,k]
+        vzb =  np.sin(Ltheta_vals) * vx[:,k]
+        
+        vzb[ (rnd_xi < 1.-xi) & (zb0 < 0.) ] *= -1
+
+        vx[:,k] = vxb * cos_inc_comp + vzb * sin_inc_comp
+        vy[:,k] = vyb
+        vz[:,k] = -vxb * sin_inc_comp + vzb * cos_inc_comp
+
+        #Define LOS velocity - positive is receding w.r.t. observer
+        v[:,k] = -vx[:,k].copy()
+        
+        #Add turbulent velocity
+        v[:,k] += np.random.standard_normal(size=n_cloud_per_core)*sig_turb*v_kep
+
+        # #Make vcelocity stay physical
+        mask = np.abs(v[:,k]) >= C_UNIT
+        v[:,k][ mask ] = .9999*C_UNIT * np.sign(v[:,k][mask])
+        
+        #Relativistic effects
+        g = np.sqrt( (1. + v[:,k]/C_UNIT) / (1. - v[:,k]/C_UNIT) ) / np.sqrt( 1. - Rs/rvals )
+        v[:,k] = (g - 1.)*C_UNIT
+        
+    cloud_coords = np.zeros((n_cloud_per_core, 3))
+    cloud_pcoords = np.zeros((n_cloud_per_core, 2))
+    cloud_vels = np.zeros((n_cloud_per_core, n_v_per_cloud, 3))
+    
+    cloud_coords[:,0] = x
+    cloud_coords[:,1] = y
+    cloud_coords[:,2] = z
+    del x, y, z
+    cloud_pcoords[:,0] = rvals
+    cloud_pcoords[:,1] = phi_vals
+    del rvals, phi_vals
+    cloud_vels[:,:,0] = vx
+    cloud_vels[:,:,1] = vy
+    cloud_vels[:,:,2] = vz
+    del vx, vy, vz
+    
+    #Velocities are in VEL_UNIT
+    #Coords are in light days
+    
+    return cloud_weights, cloud_taus, cloud_coords, cloud_pcoords, cloud_vels, v
 
 
 ############################################################################################################
