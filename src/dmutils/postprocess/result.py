@@ -912,10 +912,10 @@ class Result:
             zline2 = -xline20*np.sin(inc) + zline20*np.cos(inc)
         
         
-        #Use the mean velocity
-        vx_vals = np.mean(vx_vals, axis=1)
-        vy_vals = np.mean(vy_vals, axis=1)
-        vz_vals = np.mean(vz_vals, axis=1)        
+        # #Use the mean velocity
+        # vx_vals = np.mean(vx_vals, axis=1)
+        # vy_vals = np.mean(vy_vals, axis=1)
+        # vz_vals = np.mean(vz_vals, axis=1)        
         
         
         sizes = 40*weights
