@@ -187,12 +187,16 @@ def plot_mult(res_arr, weights_all=None, res_names=None,
 
 
 
-def plot_mult_fitres(res_arr, weights_all=None, res_names=None, include_res=False, inflate_err=False,
+def plot_mult_fitres(res_arr, weights_all=None, res_names=None, 
+                     include_res=False, inflate_err=False, temps=None,
                      xbounds_arr=None, output_fname=None, show=False):
     
     
     assert len(res_arr) > 0
     nres = len(res_arr)
+    
+    if temps is None:
+        temps = np.ones(len(res_arr))
     
     if weights_all is None:
         weights_all = [None]*nres
@@ -251,8 +255,10 @@ def plot_mult_fitres(res_arr, weights_all=None, res_names=None, include_res=Fals
             ax_lc = [ax1, ax2]
         
         
-        ax_2d = res.line2d_plot(weights=weights_all[i], include_res=include_res, xbounds=xbounds_arr[i], ax=ax_2d, show=False)
-        ax_lc = res.lc_fits_plot(weights=weights_all[i], inflate_err=inflate_err, ax=ax_lc, show=False)
+        ax_2d = res.line2d_plot(weights=weights_all[i], include_res=include_res, xbounds=xbounds_arr[i], 
+                                ax=ax_2d, show=False)
+        ax_lc = res.lc_fits_plot(weights=weights_all[i], temp=temps[i], inflate_err=inflate_err, 
+                                 ax=ax_lc, show=False)
         
 
         #Set labels on the line2d plots

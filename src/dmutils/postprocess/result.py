@@ -1126,7 +1126,7 @@ class Result:
         
         
 
-    def lc_fits_plot(self, inflate_err=False, weights=None, ax=None, output_fname=None, show=False):
+    def lc_fits_plot(self, inflate_err=False, temp=1, weights=None, ax=None, output_fname=None, show=False):
         
         if ax is None:
             ax_in = False
@@ -1153,6 +1153,9 @@ class Result:
         xin, yin, yerrin = self.bp.data['con_data'].T
         xout = self.bp.results['con_rec'][0,:,0]
         
+        if inflate_err:
+            yerrin *= np.sqrt(temp)
+        
         yout_lo = np.zeros( len(xout) )
         yout_med = np.zeros( len(xout) )
         yout_hi = np.zeros( len(xout) )
@@ -1160,9 +1163,7 @@ class Result:
             yout_lo[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .16)
             yout_med[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .5)
             yout_hi[i] = weighted_percentile(self.bp.results['con_rec'][:,i,1], weights, .84)
-            
-        # yout_lo, yout_med, yout_hi = np.percentile(self.bp.results['con_rec'][:,:,1], [16, 50, 84], axis=0)
-        
+                    
         con_mean_err = np.mean(yerrin)
         med_param = weighted_percentile(self.bp.results['sample'][:, con_err_idx], weights, .5)
         syserr_con = (np.exp(med_param) - 1.0) * con_mean_err
@@ -1217,8 +1218,7 @@ class Result:
         #yout_lo, yout_med, yout_hi = np.percentile(rec_line_lc, [16, 50, 84], axis=0) * self.central_wl*self.bp.VelUnit/(c/1e5)
         
         if inflate_err:
-            yerrin_mask = (yerrin < .05*yout_med)
-            yerrin[yerrin_mask] = .05*yout_med
+            yerrin *= np.sqrt(temp)
 
         lines, caps, bars = ax[1].errorbar(xin, yin, yerrin, fmt='.k', ms=1.5)
         [bar.set_alpha(.3) for bar in bars]
@@ -1450,7 +1450,7 @@ class Result:
 
 
     def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
-                 include_res=True, weights=None,
+                 include_res=True, weights=None, temp=1,
                  output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
@@ -1477,7 +1477,7 @@ class Result:
             ax_top = [ax1, ax2]
         
         
-        ax_top = self.line2d_plot(weights=weights, xbounds=line_xbounds, ax=ax_top, show=False)
+        ax_top = self.line2d_plot(temp=temp, weights=weights, xbounds=line_xbounds, ax=ax_top, show=False)
         
             #Set line2d labels
         prof_titles = ['Data', 'Model', 'Residuals']
@@ -1536,7 +1536,7 @@ class Result:
     
     
     def summary2(self, bounds=[-50, 50], skip_clouds=10, plot_rblr=True, 
-                 posterior_weights=None,
+                 posterior_weights=None, ptype='median',
                  weight=True, output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
@@ -1555,7 +1555,9 @@ class Result:
         ax2 = fig.add_subplot(gs_tr[1], sharey=ax1, sharex=ax1)
         ax_tr = [ax1, ax2]
         
-        ax_tr = self.plot_clouds(skip=skip_clouds, plot_rblr=plot_rblr, colorbar=True, bounds=bounds, ax=ax_tr, show=False)
+        ax_tr = self.plot_clouds(skip=skip_clouds, plot_rblr=plot_rblr, 
+                                 ptype=ptype, posterior_weights=posterior_weights,
+                                 colorbar=True, bounds=bounds, ax=ax_tr, show=False)
         
             #Set cloud labels
         ax_tr[0].set_title('Side View', fontsize=22)
