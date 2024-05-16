@@ -683,7 +683,7 @@ class Result:
             return fig, ax
 
 
-    def transfer_function_2dplot(self, ymax=None, xbounds=None, 
+    def transfer_function_2dplot(self, ptype='median', ymax=None, xbounds=None, 
                                  vmin=None, vmax=None, weights=None,
                                  ax=None, output_fname=None, show=False):
         
@@ -702,25 +702,46 @@ class Result:
         G = const.G.cgs.value
         Msol = const.M_sun.cgs.value
         
-        #Get data
-        idx = np.argmax( self.bp.results['sample_info'] * weights ) 
-        # bh_idx = self.bp.locate_bhmass()
+        #Get best params
+        if ptype == 'median':
+            model_params = np.zeros(len(self.bp.results['sample'][0]))
+            for i in range(len(model_params)):
+                model_params[i] = weighted_percentile(self.bp.results['sample'][:,i], weights=weights, perc=.5)
+
+        elif ptype == 'map':
+            idx = np.argmax( self.bp.results['sample_info'] * weights )
+            model_params = self.bp.results['sample'][idx]
+            
+        elif ptype == 'mean':
+            model_params = np.average(self.bp.results['sample'], axis=0, weights=weights)
+
+
+        #Get clouds
+        weights, taus, _, _, _, vels_los = generate_clouds(model_params, 
+                                                                         self.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+
+        #Get transfer function
+        psi_v_atdata = self.data.vel_line_ext
+        psi_tau_atdata, _, psi2D_atdata = generate_tfunc_tot(taus, vels_los, weights, 
+                                                             self.data.ntau, psi_v_atdata, sys.float_info.epsilon)
+
+        #Physical units
+        psi_v_atdata *= self.data.VEL_UNIT #km/s
+
+
         bh_idx = 8
+        mbh = 10**( model_params[bh_idx]/np.log(10) + 6) * Msol
 
-        mbh = 10**( self.bp.results['sample'][idx,bh_idx]/np.log(10) + 6) * Msol
-
-        wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
-        t_vals = self.bp.results['tau_rec'][idx]
-        vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl #km/s
+        # wl_vals = self.bp.data['line2d_data']['profile'][0,:,0]/(1+self.z)
+        # t_vals = self.bp.results['tau_rec'][idx]
+        # vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl #km/s
         
-        env_vals = mbh * G/c/(vel_vals*1e5)**2
+        env_vals = mbh * G/c/(psi_v_atdata*1e5)**2
         env_vals /= 60*60*24 # convert to days
         
         
         
-        
-        # plot_arr = np.median(self.bp.results['tran2d_rec'], axis=0)
-        plot_arr = self.bp.results['tran2d_rec'][idx]
+        plot_arr = psi2D_atdata.copy()
         # plot_arr[ plot_arr > 1 ] = 0.
 
 
@@ -729,11 +750,11 @@ class Result:
 
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
-                    extent=[vel_vals[0]/1000, vel_vals[-1]/1000, t_vals[0], t_vals[-1]],
+                    extent=[psi_v_atdata[0]/1000, psi_v_atdata[-1]/1000, psi_tau_atdata[0], psi_tau_atdata[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
                     vmin=vmin, vmax=vmax)
 
-        ax.plot(vel_vals/1000, env_vals, color='c', ls='--', lw=2)
+        ax.plot(psi_v_atdata/1000, env_vals, color='c', ls='--', lw=2)
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -750,7 +771,8 @@ class Result:
         cbar.ax.tick_params('both', labelsize=14)
 
         if not ax_in:
-            ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
+            # ax.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
+            ax.set_title(r'$\rm \Psi(v, \tau)$', fontsize=18)
 
         ax.axvline(0, color='c', ls='--', lw=2)
 

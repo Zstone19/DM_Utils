@@ -146,7 +146,7 @@ def plot_mult(res_arr, weights_all=None, res_names=None,
                                     skip=skip_clouds, show=False)
         
         ax_tf = res.transfer_function_2dplot(weights=weights_all[i], ax=ax_tf, ymax=tf_ymax_arr[i], xbounds=arrs[1][i], 
-                                             vmin=arrs[3][i][0], vmax=arrs[3][i][1],
+                                             vmin=arrs[3][i][0], vmax=arrs[3][i][1], ptype=ptype,
                                              show=False)
         
         
@@ -161,7 +161,8 @@ def plot_mult(res_arr, weights_all=None, res_names=None,
 
         #Set transfer function labels
         if i == 0:
-            ax_tf.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=22)
+            # ax_tf.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=22)
+            ax_tf.set_title(r'$\rm \Psi(v, \tau)$', fontsize=22)
         if i == len(res_arr)-1:
             ax_tf.set_xlabel(r'Velocity [$\rm 10^3 \; km \ s^{-1} $]', fontsize=20)
 
