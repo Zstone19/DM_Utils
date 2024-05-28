@@ -461,24 +461,41 @@ def generate_tfunc(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     n_v_per_cloud = cloud_vels.shape[1]
     
     tau_min = cloud_taus.min()
-    tau_max = cloud_taus.max()
-    dtau = (tau_max - tau_min)/(ntau - 1)
+    tau_max = cloud_taus.max()    
+    psi_tau = np.linspace(tau_min, tau_max, ntau)
     
-    psi_tau = np.array([ tau_min + j*dtau for j in range(ntau) ])
+    psi_tau_edges = np.zeros(ntau+1)
+    psi_tau_edges[1:-1] = .5*(psi_tau[1:] + psi_tau[:-1])
+    psi_tau_edges[0] = psi_tau[0] - .5*(psi_tau[1] - psi_tau[0])
+    psi_tau_edges[-1] = psi_tau[-1] + .5*(psi_tau[-1] - psi_tau[-2])
+
+    #Assume psi_v is the centers
+    psi_v_edges = np.zeros(len(psi_v)+1)
+    psi_v_edges[1:-1] = .5*(psi_v[1:] + psi_v[:-1])
+    psi_v_edges[0] = psi_v[0] - .5*(psi_v[1] - psi_v[0])
+    psi_v_edges[-1] = psi_v[-1] + .5*(psi_v[-1] - psi_v[-2])
+    
+    dtau = np.diff(psi_tau)[0]
     dv = np.diff(psi_v)[0]
     psi2d = np.zeros((ntau, len(psi_v)))
     
+        
     #Fill Psi 2D
     for j in range(n_cloud_per_core):
-        idt = int(  (cloud_taus[j] - tau_min)//dtau  )
+        # idt = int(  (cloud_taus[j] - tau_min)//dtau  )
+        idt = np.searchsorted(psi_tau_edges, cloud_taus[j]) - 1
         
         for k in range(n_v_per_cloud):
-            v_offset = cloud_vels[j,k] + bin_offset*dv
+            # v_offset = cloud_vels[j,k] + bin_offset*dv
             
-            if (v_offset < psi_v[0]) or (v_offset >= psi_v[-1]):
+            if (cloud_vels[j,k] < psi_v_edges[0]) or (cloud_vels[j,k] >= psi_v_edges[-1]):
                 continue
+            
+            # if (v_offset < psi_v[0]) or (v_offset >= psi_v[-1]):
+            #     continue
     
-            idv = int(  (v_offset - psi_v[0])//dv  )
+            # idv = int(  (v_offset - psi_v[0])//dv  )
+            idv = np.searchsorted(psi_v_edges, cloud_vels[j,k]) - 1
             psi2d[idt, idv] += cloud_weights[j]
             
     #Normalize
@@ -505,9 +522,9 @@ def generate_tfunc_tot(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     kernel = gkern(nkernel, sig_gauss)
 
     #Smooth
-    for j in range(len(psi_v)):
+    for j in range(len(psi_tau)):
         # psi2d[:,j] = convolve(psi2d[:,j], Gaussian1DKernel(stddev=sig_gauss))
-        psi2d[:,j] = fftconvolve(psi2d[:,j], kernel, mode='same') 
+        psi2d[j,:] = fftconvolve(psi2d[j,:], kernel, mode='same') 
 
     return psi_tau, psi_v, psi2d
 

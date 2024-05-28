@@ -726,9 +726,7 @@ class Result:
                                                              self.data.ntau, psi_v_atdata, sys.float_info.epsilon)
 
         #Physical units
-        psi_v_atdata *= self.data.VEL_UNIT #km/s
-
-
+        vel_vals = self.data.vel_line_ext_out.copy()
         bh_idx = 8
         mbh = 10**( model_params[bh_idx]/np.log(10) + 6) * Msol
 
@@ -736,7 +734,7 @@ class Result:
         # t_vals = self.bp.results['tau_rec'][idx]
         # vel_vals = (c/1e5)*( wl_vals - self.central_wl )/self.central_wl #km/s
         
-        env_vals = mbh * G/c/(psi_v_atdata*1e5)**2
+        env_vals = mbh * G/c/(vel_vals*1e5)**2
         env_vals /= 60*60*24 # convert to days
         
         
@@ -750,11 +748,11 @@ class Result:
 
 
         im = ax.imshow( plot_arr, origin='lower', aspect='auto',
-                    extent=[psi_v_atdata[0]/1000, psi_v_atdata[-1]/1000, psi_tau_atdata[0], psi_tau_atdata[-1]],
+                    extent=[vel_vals[0]/1000, vel_vals[-1]/1000, psi_tau_atdata[0], psi_tau_atdata[-1]],
                     interpolation='gaussian', cmap=Matter_20_r.mpl_colormap, 
                     vmin=vmin, vmax=vmax)
 
-        ax.plot(psi_v_atdata/1000, env_vals, color='c', ls='--', lw=2)
+        ax.plot(vel_vals/1000, env_vals, color='c', ls='--', lw=2)
 
         if ymax is not None:
             ax.set_ylim(0, ymax)
@@ -1472,7 +1470,7 @@ class Result:
 
 
     def summary1(self, tf_ymax=500, tf_xbounds=[-5000,5000], line_xbounds=None,
-                 include_res=True, weights=None, temp=1,
+                 include_res=True, weights=None, temp=1, ptype='median',
                  output_fname=None, show=False):
         
         """Similar to the Li+2022 plot, but instead of profile fits, put the transfer function in.
@@ -1517,7 +1515,7 @@ class Result:
         
         #BOTTOM LEFT: Transfer Function
         ax_bl = fig.add_subplot(gs_bot[0])
-        ax_bl = self.transfer_function_2dplot(weights=weights, ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
+        ax_bl = self.transfer_function_2dplot(ptype=ptype, weights=weights, ax=ax_bl, ymax=tf_ymax, xbounds=tf_xbounds, show=False)
         
             #Set tf labels
         ax_bl.set_title(r'Max Likelihood $\rm \Psi(v, t)$', fontsize=18)
