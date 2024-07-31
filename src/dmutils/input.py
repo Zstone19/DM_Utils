@@ -54,7 +54,8 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2,
 def make_input_file(fnames, central_wl, times, z, output_fname, 
                     tol_fnames=None, tol_ffactor=None, tol_cfactor=None,
                     time_bounds=None, wl_bounds=None, 
-                    nbin=None, bin_factor=None, tol=5e-2):
+                    nbin=None, bin_factor=None, tol=5e-2,
+                    verbose=True):
     
     #Wavelength is assumed to be in rest frame
     #Wavelength bins for each time are assumed not to be the same
@@ -306,6 +307,13 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
 
 
     #Interpolate over NaNs
+    if verbose:
+        nbad = np.sum( np.isnan(prof_tot_rebin) )
+        print('Number of bins with no pts: ', nbad)
+        print('Number of bins:', prof_tot_rebin.shape[0] * prof_tot_rebin.shape[1])
+        print('Fraction of empty bins:', nbad / (prof_tot_rebin.shape[0] * prof_tot_rebin.shape[1]) )
+
+
     for n in range(len(wl_tot)):
         nan_mask = np.isnan(prof_tot_rebin[n])
         
