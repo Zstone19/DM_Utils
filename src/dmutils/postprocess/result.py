@@ -483,7 +483,8 @@ class Result:
 
 
 
-    def line2d_plot(self, gaussian_smooth=False, gaussian_sig=[0,0], xbounds=None,
+    def line2d_plot(self,
+                    gaussian_smooth=False, gaussian_sig=[0,0], xbounds=None,
                     include_res=True, weights=None,
                     ax=None, output_fname=None, show=False):
         
@@ -530,6 +531,60 @@ class Result:
         idx = np.argmax( self.bp.results['sample_info'] * weights )        
         model_flux = self.bp.results['line2d_rec'][idx]
         data_flux = self.bp.data['line2d_data']['profile'][:,:,1]
+        
+        
+        # #Get best params
+        # if ptype == 'median':
+        #     model_params = np.zeros(len(self.bp.results['sample'][0]))
+        #     for i in range(len(model_params)):
+        #         model_params[i] = weighted_percentile(self.bp.results['sample'][:,i], weights=weights, perc=.5)
+
+        # elif ptype == 'map':
+        #     idx = np.argmax( self.bp.results['sample_info'] * weights )
+        #     model_params = self.bp.results['sample'][idx]
+            
+        # elif ptype == 'mean':
+        #     model_params = np.average(self.bp.results['sample'], axis=0, weights=weights)
+        
+
+
+
+        # #Get clouds
+        # weights, taus, _, _, _, vels_los = generate_clouds(model_params, 
+        #                                                    self.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+
+
+        # #Get continuum
+        # ycont_recon, yerr_cont_recon = calculate_cont_from_model_semiseparable(model_params[self.data.nblr:], 
+        #                                                             self.data.xcont, self.data.ycont, self.data.yerr_cont, 
+        #                                                             self.data.xcont_recon, self.data.nq, self.data.nvar,
+        #                                                             self.data.cont_err_mean)
+        # yerr_cont_recon = np.sqrt( np.abs(yerr_cont_recon.min()) + np.abs(yerr_cont_recon.max()) )
+        
+        
+        # #Get detrended continuum
+        # ycont_rm = calculate_cont_rm(model_params, self.data.xcont_recon, ycont_recon, 
+        #                              self.data.pow_xcont, self.data.xcont_med, 
+        #                              self.data.idx_resp, self.data.flag_trend_diff, self.data.ndifftrend)
+
+
+        # #Get transfer function
+        # psi_v_atdata = self.data.vel_line_ext
+        # psi_tau_atdata, _, psi2D_atdata = generate_tfunc_tot(taus, vels_los, weights, 
+        #                                                      self.data.ntau, psi_v_atdata, sys.float_info.epsilon)
+        
+        
+        # #Get line2d rec
+        # model_flux = get_cont_line2d_recon(model_params, self.data, self.data.xcont_recon, ycont_rm,
+        #                                   psi_v_atdata, psi_tau_atdata, psi2D_atdata,
+        #                                   self.data.xline)
+        # model_flux /= self.data.line_scale
+
+
+        # ind1 = self.data.nvel_data_incr
+        # ind2 = -self.data.nvel_data_incr
+        # model_flux = model_flux[:, ind1:ind2]
+        
         
         vmin = np.min([np.min(model_flux), np.min(data_flux)])
         vmax = np.max([np.max(model_flux), np.max(data_flux)])
@@ -611,10 +666,6 @@ class Result:
         
         #############################################################
         #Model data
-        
-        nt = int(self.bp.param._parser._sections['dump']['nlinerecon'])
-        nv = int(self.bp.param._parser._sections['dump']['nvelrecon'])
-        
         ax[1].pcolormesh(vel/1e3, time, model_flux, cmap=Matter_20_r.mpl_colormap, vmin=vmin, vmax=vmax)
         
         #############################################################
@@ -718,7 +769,7 @@ class Result:
 
         #Get clouds
         weights, taus, _, _, _, vels_los = generate_clouds(model_params, 
-                                                                         self.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
+                                                           self.ncloud, self.data.rmax, self.data.rmin, self.vel_per_cloud)
 
         #Get transfer function
         psi_v_atdata = self.data.vel_line_ext

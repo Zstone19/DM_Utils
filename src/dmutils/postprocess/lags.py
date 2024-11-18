@@ -199,7 +199,7 @@ def get_bins(res, fbin=None, nbin=None, vstart=-5e3, vend=5e3 ):
 #Utility functions 
 
 
-def get_lag_dists(res, wl_bins, weights=None):
+def get_lag_dists(res, wl_bins, weights=None, downsample=True):
 
     if weights is None:
         weights = np.ones( len(res.bp.results['sample_info']) )
@@ -251,12 +251,17 @@ def get_lag_dists(res, wl_bins, weights=None):
         #Get weights
         wtau, lags, _, _, _ = get_weights(xc-xc[0], yc, xl-xc[0], yl, k=2)
         
-        #Get downsampled dist
-        min_bound, _, max_bound, _, _ = get_bounds(lag_post[i], wtau, lags, width=15, rel_height=.99)
-        
-        mask = (lag_post[i] > min_bound) & (lag_post[i] < max_bound)
-        downsampled_posterior.append( lag_post[i][mask] )
-        downsampled_weights.append( weights[mask] )
+        if downsample:
+            #Get downsampled dist
+            min_bound, _, max_bound, _, _ = get_bounds(lag_post[i], wtau, lags, width=15, rel_height=.99)
+            
+            mask = (lag_post[i] > min_bound) & (lag_post[i] < max_bound)
+            downsampled_posterior.append( lag_post[i][mask] )
+            downsampled_weights.append( weights[mask] )
+            
+        else:
+            downsampled_posterior.append( lag_post[i] )
+            downsampled_weights.append( weights )
     
 
     return downsampled_posterior, downsampled_weights
@@ -291,12 +296,20 @@ def get_binned_lcs(input_fname, wl_bins, z):
 ##############################################################################################################
 #Plot
 
-def plot_lag_spectrum(res_arr, wl_bins, weight_all=None, line_names=None, labels=None, 
-                      xlim=None, ylim=None,
+def plot_lag_spectrum(res_arr, wl_bins, weight_all=None, line_names=None, labels=None, res_label='',
+                      xlim=None, ylim=None, 
+                      color1a='DodgerBlue', color1b='c',
+                      color2a='g', color2b='lime',
+                      color3='k',
+                      ax=None, use_error=True, nplot=0,
                       show=False, output_fname=None):
 
     c = const.c.cgs.value
     assert len(res_arr) == len(wl_bins)
+    
+    ax_in = True
+    if ax is None:
+        ax_in = False
     
     
     if labels is None:
@@ -359,85 +372,111 @@ def plot_lag_spectrum(res_arr, wl_bins, weight_all=None, line_names=None, labels
         med_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .5)
         lo_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .16)
         hi_vals_tot[i] = weighted_percentile(downsampled_posterior_tot, downsampled_weights_tot, .84)
-            
-            
+
+
+
+
     Nrow = 2
     Ncol = len(res_arr)
-    fig, ax = plt.subplots(Nrow, Ncol, figsize=(Ncol*5 + (Ncol-1)*1, Nrow*4.5), sharex='col', sharey='row')
-    
-    if Ncol == 1:
-        ax = np.array([ax]).T
-    
+
+    if not ax_in:
+        fig, ax = plt.subplots(Nrow, Ncol, figsize=(Ncol*5 + (Ncol-1)*1, Nrow*4.5), sharex='col', sharey='row')
+
+        if Ncol == 1:
+            ax = np.array([ax]).T
+
     for i in range(len(res_arr)):
-        
+
         wl_bin_centers = []
         for j in range(len(wl_bins[i])-1):
             wl_bin_centers.append( (wl_bins[i][j] + wl_bins[i][j+1])/2.0 )
-            
-        
+
+
         wl = res_arr[i].bp.data['line2d_data']['profile'][0,:,0]/(1+res_arr[i].z)
         vel_vals = (c/1e5)*( wl - res_arr[i].central_wl )/res_arr[i].central_wl
         rms_prof = get_rms_spectrum(res_arr[i])
-        
-        
-        
-        ax[0,i].errorbar(wl_bin_centers, yvals[i], xerr=[xerr_lo[i], xerr_hi[i]], yerr=[yerr_lo[i], yerr_hi[i]], fmt='o',
-                        ms=4, mec='DodgerBlue', mfc='c', capsize=3)
-        ax[0,i].axhline(med_vals_tot[i], color='g', ls='--', alpha=.5)
-        ax[0,i].axhspan(lo_vals_tot[i], hi_vals_tot[i], color='lime', alpha=0.1)
-        
+
+
+
+        if use_error:
+            ax[0,i].errorbar(wl_bin_centers, yvals[i], xerr=[xerr_lo[i], xerr_hi[i]], yerr=[yerr_lo[i], yerr_hi[i]], fmt='o',
+                            ms=4, mec=color1a, mfc=color1b, capsize=3)
+        else:
+            ax[0,i].errorbar(wl_bin_centers, yvals[i], fmt='o', ms=6, mec=color1a, mfc=color1a)
+
+
+        ax[0,i].axhline(med_vals_tot[i], color=color2a, ls='--', alpha=.5)
+        ax[0,i].axhspan(lo_vals_tot[i], hi_vals_tot[i], color=color2b, alpha=0.1)
+
         if ylim[i] is not None:
             ax[0,i].set_ylim(ylim[i])
-        
-        
-        
-        ax[1,i].plot(wl, rms_prof, c='k')
+
+
+
+        if i == 0:
+            reslabel = res_label
+        else:
+            reslabel = ''
+
+        ax[1,i].plot(wl, rms_prof, c=color3, label=reslabel)
 
         ax[1,i].set_xlabel(r'Rest Wavelength [$\rm \AA$]', fontsize=14)
         ax[0,i].text(.05, .95, labels[i], transform=ax[0,i].transAxes, fontsize=14, va='top')
 
         if i == 0:        
-            ax[0,i].set_ylabel(r'$\tau$ [d]', fontsize=14)
-            ax[1,i].set_ylabel(r'$\rm f_{\lambda, ' + line_names[i] + r', rms}$', fontsize=14)
-        
-        
+            ax[0,i].set_ylabel(r'Lag [d]', fontsize=14)
+            ax[1,i].set_ylabel(r'RMS Flux', fontsize=14)
+
+
         ax2 = ax[0,i].twiny()
         ax2.plot(vel_vals/1e3, rms_prof, c='none')
-        ax2.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=14, labelpad=10)
-        
+
+
+        if ((ax_in) and (nplot == 0)) or (not ax_in):
+            ax2.set_xlabel(r'Velocity [$\rm 10^3 \; km \; s^{-1}$]', fontsize=14, labelpad=10)
+
         if xlim[i] is None:
             xlim[i] = ax[0,i].get_xlim()
-    
-        ax2.set_xlim( (c/1e8)*(xlim[i][0]-res_arr[i].central_wl)/res_arr[i].central_wl, 
-                      (c/1e8)*(xlim[i][1]-res_arr[i].central_wl)/res_arr[i].central_wl )
-        
-    
+
         for a in [ax[0,i], ax[1,i]]:
-            a.axvline(res_arr[i].central_wl, color='purple', linestyle='--', alpha=.5)
-            a.tick_params('both', labelsize=10)
-            a.tick_params('both', which='major', length=6)
-            a.tick_params('both', which='minor', length=3)
-            
             if xlim is not None:
                 a.set_xlim(xlim[i])
-            
-        ax[0,i].tick_params('x', labelsize=0)
+
+        xlim_vel0 = (c/1e8)*(xlim[i][0]-res_arr[i].central_wl)/res_arr[i].central_wl
+        xlim_vel1 = (c/1e8)*(xlim[i][1]-res_arr[i].central_wl)/res_arr[i].central_wl    
+        ax2.set_xlim(xlim_vel0, xlim_vel1)
+
+
+        if ((ax_in) and (nplot == 0)) or (not ax_in):
+            for a in [ax[0,i], ax[1,i]]:
+                a.axvline(res_arr[i].central_wl, color='purple', linestyle=':', alpha=.5)
+                a.tick_params('both', labelsize=10)
+                a.tick_params('both', which='major', length=6)
+                a.tick_params('both', which='minor', length=3)
+
+            ax[0,i].tick_params('x', labelsize=0)
+
+
+            ax2.tick_params('both', labelsize=10)
+            ax2.tick_params('both', which='major', length=6)
+            ax2.tick_params('both', which='minor', length=3)
+
+
+
+    if not ax_in: 
+        plt.subplots_adjust(hspace=0.0, wspace=.05)
+
+        if output_fname is not None:
+            plt.savefig(output_fname, bbox_inches='tight')
+
+        if show:
+            plt.show()
+
+        plt.close()
+        plt.cla()
+        plt.clf()
     
-        ax2.tick_params('both', labelsize=10)
-        ax2.tick_params('both', which='major', length=6)
-        ax2.tick_params('both', which='minor', length=3)
-        
-        
-    plt.subplots_adjust(hspace=0.0, wspace=.05)
-    
-    if output_fname is not None:
-        plt.savefig(output_fname, bbox_inches='tight')
-        
-    if show:
-        plt.show()
-        
-    plt.close()
-    plt.cla()
-    plt.clf()
-    
-    return
+        return
+
+    else:
+        return ax

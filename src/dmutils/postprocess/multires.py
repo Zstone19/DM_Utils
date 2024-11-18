@@ -8,6 +8,7 @@ from astropy.table import Table
 from astropy.io import ascii
 import astropy.constants as const
 from dmutils.postprocess.result import weighted_percentile, val2latex, val2latex_weighted
+from dmutils.postprocess.lags import plot_lag_spectrum
 
 
 def isnone(arr):    
@@ -296,6 +297,60 @@ def plot_mult_fitres(res_arr, weights_all=None, res_names=None,
 
     
     return
+
+
+
+
+def plot_mult_lag(res_arr_arr, wl_bins_arr, weight_all_arr, line_names, line_labels, res_labels,
+                  xlim, ylim, use_error=True, show=False, output_fname=None):
+
+    #Full, low, high
+    Nrow = 2
+    Ncol = len(res_arr_arr[0])
+
+    fig, ax = plt.subplots(Nrow, Ncol, figsize=(Ncol*5 + (Ncol-1)*1, Nrow*4.5), sharex='col', sharey='row')
+
+    #Binned lags
+    color1a = ['k', 'b', 'r']
+    color1b = ['gray', 'DodgerBlue', 'pink']
+    #Integrated lags
+    color2a = ['gray', 'c', 'darkorange']
+    color2b = ['gray', 'lightblue', 'orange']
+    #RMS flux
+    color3 = ['k', 'b', 'r']
+
+
+
+    for i in range(len(res_arr_arr)):
+        if i == 0:
+            labels = line_labels
+        else:
+            labels = ['']*len(line_labels)
+
+        ax = plot_lag_spectrum( res_arr_arr[i], wl_bins_arr[i], weight_all_arr[i], line_names, 
+                                labels, res_labels[i], xlim=xlim, ylim=ylim, 
+                                color1a=color1a[i], color1b=color1b[i], color2a=color2a[i],
+                                color2b=color2b[i], color3=color3[i],
+                                show=False, ax=ax, use_error=use_error, nplot=i, 
+                                output_fname=None )
+
+
+    plt.subplots_adjust(hspace=0.0, wspace=.05)
+    plt.figlegend(bbox_to_anchor=(.12,.97), loc='upper left', fontsize=12, ncols=Ncol)
+
+    if output_fname is not None:
+        plt.savefig(output_fname, bbox_inches='tight')
+
+    if show:
+        plt.show()
+
+    plt.close()
+    plt.cla()
+    plt.clf()
+
+    return
+    
+    
 
 
 

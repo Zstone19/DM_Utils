@@ -522,9 +522,15 @@ def generate_tfunc_tot(cloud_taus, cloud_vels, cloud_weights, ntau, psi_v, EPS):
     kernel = gkern(nkernel, sig_gauss)
 
     #Smooth
-    for j in range(len(psi_tau)):
+    for j in range(len(psi_v)):
         # psi2d[:,j] = convolve(psi2d[:,j], Gaussian1DKernel(stddev=sig_gauss))
-        psi2d[j,:] = fftconvolve(psi2d[j,:], kernel, mode='same') 
+        psi2d[:,j] = fftconvolve(psi2d[:,j], kernel, mode='same') 
+
+
+    #Normalize after smoothing
+    Anorm = np.sum(psi2d)*np.diff(psi_tau)[0]*np.diff(psi_v)[0]
+    Anorm += EPS
+    psi2d /= Anorm
 
     return psi_tau, psi_v, psi2d
 
@@ -547,7 +553,5 @@ def get_cont_line2d_recon(model_params, data, xcont_rm, ycont_rm,
     line2D_recon_smooth = line_gaussian_smooth_2d(line2D_recon, model_params, dv,
                                                   data.flag_inst_res, data.inst_res, data.inst_res_err,
                                                   data.nblrmodel, data.nnlr)
-
-    # line2D_recon_smooth = line2D_recon.copy()
     
     return line2D_recon_smooth
