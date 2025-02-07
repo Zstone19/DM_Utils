@@ -54,7 +54,7 @@ def get_prof_bounds(fnames, central_wl, tol=5e-2,
 def make_input_file(fnames, central_wl, times, z, output_fname, 
                     tol_fnames=None, tol_ffactor=None, tol_cfactor=None,
                     time_bounds=None, wl_bounds=None, 
-                    nbin=None, bin_factor=None, tol=5e-2,
+                    nbin=None, bin_factor=None, dlambda=None, tol=5e-2,
                     verbose=True):
     
     #Wavelength is assumed to be in rest frame
@@ -167,17 +167,29 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
 
     ####################################################
     #Need to rebin to a common wavelength grid
-    if nbin is None:
-        nbin = np.max( list(map(len, wl_tot))  )
-        
-    if bin_factor is not None:
-        nbin = int(nbin/bin_factor)
+    #Can specify nbin, bin_factor, or dlambda    
     
     min_wl = np.min( list(map(np.min, wl_tot)) )
     max_wl = np.max( list(map(np.max, wl_tot)) )
     
-    bin_centers = np.linspace(min_wl, max_wl, nbin )
-    dlambda = bin_centers[1] - bin_centers[0]
+    if (bin_factor is not None):
+        nbin = int(len(wl_tot[0])/bin_factor)
+        bin_centers = np.linspace(min_wl, max_wl, nbin )
+        dlambda = bin_centers[1] - bin_centers[0]
+        
+    elif (dlambda is not None):
+        bin_centers = np.arange(min_wl, max_wl, dlambda)
+        nbin = len(bin_centers)
+    
+    elif (nbin is not None):
+        bin_centers = np.linspace(min_wl, max_wl, nbin )
+        dlambda = bin_centers[1] - bin_centers[0]
+        
+    else:
+        nbin = np.max( list(map(len, wl_tot))  )
+        bin_centers = np.linspace(min_wl, max_wl, nbin )
+        dlambda = bin_centers[1] - bin_centers[0]
+    
 
     bin_edges = [bin_centers[0] - dlambda/2]
     for i in range(len(bin_centers)):

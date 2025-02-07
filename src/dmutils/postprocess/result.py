@@ -1001,12 +1001,12 @@ class Result:
         
 
         if vmax is None:
-            max_v = np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )  
+            max_v = np.max(-vx_vals) #np.max( [np.max(vy_vals[::skip]), np.max(vx_vals[::skip])] )  
         else:
             max_v = vmax
     
         if vmin is None:
-            min_v = np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
+            min_v = np.min(-vx_vals) #np.min( [np.min(vy_vals[::skip]), np.min(vx_vals[::skip])] )
         else:
             min_v = vmin
         
@@ -1548,7 +1548,7 @@ class Result:
             ax_top = [ax1, ax2]
         
         
-        ax_top = self.line2d_plot(temp=temp, weights=weights, xbounds=line_xbounds, ax=ax_top, show=False)
+        ax_top = self.line2d_plot(weights=weights, xbounds=line_xbounds, ax=ax_top, show=False)
         
             #Set line2d labels
         prof_titles = ['Data', 'Model', 'Residuals']
@@ -1581,7 +1581,7 @@ class Result:
         ax2 = fig.add_subplot(gs_br[1], sharex=ax1)
         ax_br = [ax1, ax2]
         
-        ax_br = self.lc_fits_plot(weights=weights, ax=ax_br, show=False)
+        ax_br = self.lc_fits_plot(temp=temp, weights=weights, ax=ax_br, show=False)
         
         
             #Set lc labels
@@ -1608,7 +1608,8 @@ class Result:
     
     def summary2(self, bounds=[-50, 50], skip_clouds=10, plot_rblr=True, 
                  posterior_weights=None, ptype='median',
-                 weight=True, output_fname=None, show=False):
+                 weight=True, vmin=None, vmax=None, 
+                 output_fname=None, show=False):
         
         fig = plt.figure(figsize=(20,10))
         gs_tot = gridspec.GridSpec(2, 4, figure=fig, wspace=.1)
@@ -1628,7 +1629,8 @@ class Result:
         
         ax_tr = self.plot_clouds(skip=skip_clouds, plot_rblr=plot_rblr, 
                                  ptype=ptype, posterior_weights=posterior_weights,
-                                 colorbar=True, bounds=bounds, ax=ax_tr, show=False)
+                                 colorbar=True, bounds=bounds, vmin=vmin, vmax=vmax,
+                                 ax=ax_tr, show=False)
         
             #Set cloud labels
         ax_tr[0].set_title('Side View', fontsize=22)
@@ -1644,10 +1646,18 @@ class Result:
             #MBH
         mbh_samples = self.bp.results['sample'][:,8]/np.log(10) + 6        
         ax1.hist(mbh_samples, bins=25)
-        med_mbh = weighted_percentile(mbh_samples, posterior_weights, .5)
+        
+        
+        if posterior_weights is None:
+            pw = np.ones(len(self.bp.results['sample']))
+            pw /= np.sum(pw)
+        else:
+            pw = posterior_weights
+        
+        med_mbh = weighted_percentile(mbh_samples, pw, .5)
         ax1.axvline(med_mbh, color='r', ls='--')
         
-        mbh_text = val2latex_weighted(mbh_samples, posterior_weights)
+        mbh_text = val2latex_weighted(mbh_samples, pw)
         ax1.text( .05, .95, mbh_text, transform=ax1.transAxes, fontsize=15, va='top', ha='left')
         ax1.set_xlabel(r'$\log_{10}(M_{BH}/M_{\odot})$', fontsize=15)        
         
