@@ -123,11 +123,37 @@ def make_input_file(fnames, central_wl, times, z, output_fname,
     prof_tot = []
     err_tot = []
     
+    assert isinstance(wl_bounds, list) or (wl_bounds is None)
+    
     if wl_bounds is not None:
-        bounds = wl_bounds
+        assert len(wl_bounds) == 2
+    
+    get_bounds = False
+    if wl_bounds is not None:
+        for i in range(2):
+            if wl_bounds[i] is None:
+                get_bounds = True
+                break
     else:
-        bounds = get_prof_bounds(tol_fnames, central_wl, tol=tol, 
-                                 ffactor=tol_ffactor, cfactor=tol_cfactor)
+        get_bounds = True
+
+    
+    if get_bounds:
+        bounds_calc = get_prof_bounds(tol_fnames, central_wl, tol=tol, 
+                                      ffactor=tol_ffactor, cfactor=tol_cfactor)
+        
+        if wl_bounds is None:
+            bounds = bounds_calc
+        else:
+            bounds = []
+            for i in range(2):
+                if wl_bounds[i] is None:
+                    bounds.append( bounds_calc[i] )
+                else:
+                    bounds.append( wl_bounds[i] )
+
+    else:
+        bounds = wl_bounds
 
     if time_bounds is not None:
         time_mask = (times > time_bounds[0]) & (times < time_bounds[1])

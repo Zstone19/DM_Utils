@@ -238,8 +238,8 @@ class Object:
 
 
     def make_brains_input(self, line_name, output_fname, 
-                          nbin=None, bin_factor=None, dlambda=None, tol=5e-2, 
-                          xmin=0, xmax=np.inf):
+                          nbin=None, bin_factor=None, dlambda=None, wl_bounds=None, 
+                          tol=5e-2, xmin=0, xmax=np.inf):
 
         #NOTE: Need to call get_line_profile_fits() first
 
@@ -284,7 +284,8 @@ class Object:
         input.make_input_file(fnames[mask], 
                              central_wl, self.mjd[mask], self.z, output_fname,
                              tol_fnames=tol_fnames[mask], tol_ffactor=ffactor, tol_cfactor=cfactor,
-                             nbin=nbin, bin_factor=bin_factor, dlambda=dlambda,  tol=tol)
+                             nbin=nbin, bin_factor=bin_factor, dlambda=dlambda, 
+                             wl_bounds=wl_bounds, tol=tol)
         self.line2d_filename = output_fname
 
         return
